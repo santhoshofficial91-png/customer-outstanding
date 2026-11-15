@@ -410,6 +410,7 @@ let rt = 0; const schedule = () => { clearTimeout(rt); rt = setTimeout(render, 8
 /* ---------- domain ---------- */
 const ROLES = ['Admin','Sub Admin','Manager','Executive'];
 const STATUSES = ['Open','Contacted','Promised','Disputed','Escalated','Paid'];
+const mine = x => isAdm() || x.by === S.me;
 const missed = e => e.status !== 'Paid' && !!e.expectedDate && e.expectedDate < TODAY;
 function expLock(e){
   if (!e.expectedDate) return {open:true, left:''};
@@ -732,7 +733,7 @@ function updateChat(toBottom, open){
 }
 function compressImg(file){ return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => { const im = new Image(); im.onload = () => { const M = 1000, s = Math.min(1, M / Math.max(im.width, im.height)), w = Math.round(im.width * s), h = Math.round(im.height * s), c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(im, 0, 0, w, h); let q = .72, d = c.toDataURL('image/jpeg', q); while (d.length > 700000 && q > .3){ q -= .1; d = c.toDataURL('image/jpeg', q); } res(d); }; im.onerror = rej; im.src = fr.result; }; fr.onerror = rej; fr.readAsDataURL(file); }); }
 function viewActivity(){
-  const all = [...D.activity.values()].sort((a,b) => a.at < b.at ? 1 : -1), P = pg(all, 'act');
+  const all = [...D.activity.values()].filter(mine).sort((a,b) => a.at < b.at ? 1 : -1), P = pg(all, 'act');
   const rows = P.items.map(a => `<tr><td class="mono">${fmtTS(a.at)}</td><td>${esc(a.byName)}</td><td>${esc(a.action)}</td><td>${esc(a.detail)}</td></tr>`).join('');
   return `<div class="head"><div><h1>Activity log</h1><p class="sub">Every action, newest first.</p></div>${XB('exportAct')}</div><div class="tw"><table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Details</th></tr></thead><tbody>${rows || '<tr><td colspan="4" class="empty">No activity yet.</td></tr>'}</tbody></table></div>${P.html}`;
 }
@@ -751,8 +752,8 @@ const NAVIC = {"chat": "<path d=\"M21 12a8 8 0 0 1-11.7 7.1L4 20l1-4.6A8 8 0 1 1
 const ico = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${NAVIC[k] || ''}</svg>`;
 const NAV = [
   ['dashboard','Dashboard',viewDashboard,()=>true],['create','Create',viewCreate,isTop],['outstanding','Outstanding',viewOutstanding,()=>true],['collection','Collection',viewCollection,()=>true],['chat','Chat',viewChat,()=>true],
-  ['edits','Edit History',viewEdits,isTop],
-  ['activity','Activity log',viewActivity,isTop]
+  ['edits','Edit History',viewEdits,()=>true],
+  ['activity','Activity log',viewActivity,()=>true]
 ];
 
 /* ---------- shell ---------- */
@@ -834,7 +835,7 @@ function drawerHead(e){
   ${isTop() ? `<div style="margin-top:10px;display:flex;gap:6px"><button class="btn sm" data-act="editEntry" data-id="${e.id}">Edit invoice</button>${isAdm() ? `<button class="btn sm dng" data-act="delEntry" data-id="${e.id}">Delete</button>` : ''}</div>` : ''}`;
 }
 function timeline(e){
-  const eds = isTop() ? [...D.edits.values()].filter(h => h.entryId === e.id).map(h => ({at:h.at, t:'edit', f:h})) : [];
+  const eds = true ? [...D.edits.values()].filter(h => h.entryId === e.id && mine(h)).map(h => ({at:h.at, t:'edit', f:h})) : [];
   const fus = [...D.followups.values()].filter(f => f.entryId === e.id).map(f => ({at:f.at, t:'fu', f})), pays = [...D.payments.values()].filter(p => p.entryId === e.id).map(p => ({at:p.at, t:'pay', f:p}));
   const items = [...eds, ...fus, ...pays].sort((a,b) => a.at < b.at ? 1 : -1);
   if (!items.length) return '<div class="mut">No follow-ups yet.</div>';
@@ -910,12 +911,12 @@ async function submitEntry(form){
   closeModal();
 }
 function viewEdits(){
-  let rows = [...D.edits.values()].sort((a,b) => a.at < b.at ? 1 : -1);
+  let rows = [...D.edits.values()].filter(mine).sort((a,b) => a.at < b.at ? 1 : -1);
   const q = (F.hq || '').trim().toLowerCase();
   if (q) rows = rows.filter(h => (h.party + ' ' + h.ref + ' ' + h.sub).toLowerCase().includes(q));
   if (F.hu) rows = rows.filter(h => h.by === F.hu);
   if (F.ht) rows = rows.filter(h => h.type === F.ht);
-  const users = [...new Map([...D.edits.values()].map(h => [h.by, h.byName])).entries()];
+  const users = [...new Map([...D.edits.values()].filter(mine).map(h => [h.by, h.byName])).entries()];
   const TC = {Edit:'info', Add:'good', Delete:'bad'};
   const P = pg(rows, 'edit');
   const body = P.items.map(h => `<tr><td class="mono">${fmtTS(h.at)}</td><td>${esc(h.byName)}<div class="mut">${esc(h.role || '')}</div></td><td class="wrap"><b>${esc(h.party)}</b><div class="mut">${esc(h.ref || 'no ref')} · ${esc(h.sub)}</div></td><td><span class="pill ${TC[h.type] || ''}">${esc(h.type)}</span></td><td class="wrap"><div class="eh">${(h.changes || []).map(c => `<div class="ch"><b>${esc(c.f)}</b>: <s>${esc(c.from)}</s> → <em>${esc(c.to)}</em></div>`).join('')}</div></td></tr>`).join('');
@@ -1099,7 +1100,7 @@ async function exportSheet(file, sheet, head, rows, widths){
   await saveBook(wb, file + '_' + TODAY + '.xlsx', null);
 }
 const sortRows = rows => { const key = F.sort, dir = F.dir; return [...rows].sort((a, b) => { const x = COLS[key]?.s(a), y = COLS[key]?.s(b); return (x < y ? -1 : x > y ? 1 : 0) * dir; }); };
-const editsList = () => { let rows = [...D.edits.values()].sort((a,b) => a.at < b.at ? 1 : -1); const q = (F.hq || '').trim().toLowerCase(); if (q) rows = rows.filter(h => (h.party + ' ' + h.ref + ' ' + h.sub).toLowerCase().includes(q)); if (F.hu) rows = rows.filter(h => h.by === F.hu); if (F.ht) rows = rows.filter(h => h.type === F.ht); return rows; };
+const editsList = () => { let rows = [...D.edits.values()].filter(mine).sort((a,b) => a.at < b.at ? 1 : -1); const q = (F.hq || '').trim().toLowerCase(); if (q) rows = rows.filter(h => (h.party + ' ' + h.ref + ' ' + h.sub).toLowerCase().includes(q)); if (F.hu) rows = rows.filter(h => h.by === F.hu); if (F.ht) rows = rows.filter(h => h.type === F.ht); return rows; };
 const colList = () => { const q = (F.cq || '').trim().toLowerCase(); let rows = scoped().filter(e => e.status === 'Paid'); if (q) rows = rows.filter(e => (e.party + ' ' + (e.ref || '') + ' ' + e.sub).toLowerCase().includes(q)); return rows.sort((a, b) => (b.paidOn || '') < (a.paidOn || '') ? -1 : 1); };
 const XB = (act, label = 'Export Excel') => `<button class="btn" data-act="${act}">${label}</button>`;
 const XACT = {
@@ -1111,7 +1112,7 @@ const XACT = {
   exportEdits:() => exportSheet('Edit_History', 'Edit History', ['When','Edited by','Role','Area','Ref No','Party Name','Type','What changed'],
     editsList().map(h => [fmtTS(h.at), h.byName, h.role || '', h.sub || '', h.ref || '', h.party, h.type, (h.changes || []).map(c => `${c.f}: ${c.from} → ${c.to}`).join('; ')]), [18,18,12,16,18,36,9,70]),
   exportAct:() => exportSheet('Activity_Log', 'Activity log', ['When','Who','Action','Details'],
-    [...D.activity.values()].sort((a, b) => a.at < b.at ? 1 : -1).map(a => [fmtTS(a.at), a.byName, a.action, a.detail]), [18,18,22,70]),
+    [...D.activity.values()].filter(mine).sort((a, b) => a.at < b.at ? 1 : -1).map(a => [fmtTS(a.at), a.byName, a.action, a.detail]), [18,18,22,70]),
   exportTop:() => { const tp = {}; active(scoped()).filter(e => od(e) > 0).forEach(e => { const g = tp[e.party] = tp[e.party] || {party:e.party, amt:0, subs:new Set(), sm:new Set()}; g.amt += e.amount; g.subs.add(e.sub); const o = uname(ownerOf(e)); if (o) g.sm.add(o); });
     return exportSheet('Top_overdue_customers', 'Top 10 overdue', ['Party Name','Overdue Amount','Area','Salesman'], Object.values(tp).sort((a, b) => b.amt - a.amt).slice(0, 10).map(g => [g.party, Math.trunc(g.amt), [...g.subs].join(', '), [...g.sm].join(', ') || 'Unassigned']), [42,16,26,26]); }
 };
