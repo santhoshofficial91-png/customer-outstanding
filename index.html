@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<meta name="app-build" content="20261115093253">
+<meta name="app-build" content="20261115093852">
 <style>
 /* Direction: midnight-indigo ledger. Hero total in a violet-to-rose gradient, every metric its own hue, areas as colour-coded tiles. */
 :root{
@@ -419,7 +419,7 @@ let rt = 0; const schedule = () => { clearTimeout(rt); rt = setTimeout(render, 8
 /* ---------- domain ---------- */
 const ROLES = ['Admin','Sub Admin','Manager','Executive'];
 const STATUSES = ['Open','Contacted','Promised','Disputed','Escalated','Paid'];
-const mine = x => isAdm() || x.by === S.me;
+const mine = x => isAdm() || x.by === S.me || (me()?.role === 'Manager' && D.users.get(x.by)?.role === 'Executive' && D.users.get(x.by)?.managerId === S.me);
 const missed = e => e.status !== 'Paid' && !!e.expectedDate && e.expectedDate < TODAY;
 function expLock(e){
   if (!e.expectedDate) return {open:true, left:''};
