@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<meta name="app-build" content="20261115135408">
+<meta name="app-build" content="20261115140245">
 <style>
 /* Direction: midnight-indigo ledger. Hero total in a violet-to-rose gradient, every metric its own hue, areas as colour-coded tiles. */
 :root{
@@ -192,6 +192,11 @@ tbody tr[data-act]:hover{background:var(--info-bg)}
 @media (max-width:760px){.areas{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 .mtop{display:flex;align-items:center;gap:12px;margin:-6px 0 10px}
+.tgh{display:flex;flex-direction:column;align-items:flex-start;gap:0;border:0;background:none;cursor:pointer;color:var(--mut,#667);padding:0;line-height:1.1}
+.tgh .tga{font-size:18px;color:var(--ink)}
+.tgh .tgt{font-size:11px;font-weight:600}
+.tgh:hover .tgt,.tgh:hover .tga{color:var(--brand,#4f46e5)}
+.rmk{min-width:150px;width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;background:var(--surface);color:var(--ink)}
 .tg{width:40px;height:40px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);cursor:pointer;display:grid;place-items:center;box-shadow:0 2px 8px rgba(40,30,120,.08)}
 .tg:hover{background:var(--info-bg)}.tg svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
 .shell.nosd .side{display:none}
@@ -501,6 +506,7 @@ const COLS = {
     const lk = expLock(e);
     if (F.sub !== 'All' && !isTop() && e.status !== 'Paid' && lk.open) return `<input class="dt" type="date" min="${TODAY}" value="${e.expectedDate || ''}" data-chg="expdate" data-id="${e.id}" aria-label="Expected payment date for ${esc(e.party)}">${e.expectedDate && lk.left ? `<div class="mut" style="font-size:11px">editable for ${lk.left}</div>` : ''}`;
     return e.expectedDate ? `<span class="${missed(e) ? 'mm' : ''}">${fmtD(e.expectedDate)}</span>` : '<span class="mut">—</span>'; }},
+  rem:{h:'Remark', s:e=>(e.remark||'').toLowerCase(), c:e => e.status === 'Paid' ? (e.remark ? esc(e.remark) : '<span class="mut">—</span>') : `<input class="rmk" maxlength="200" value="${esc(e.remark || '')}" placeholder="Add remark" data-chg="remark" data-id="${e.id}" aria-label="Remark for ${esc(e.party)}">`},
   fu:{h:'', s:()=>'', c:e => `<button class="btn fub" data-act="open" data-id="${e.id}" aria-label="Follow-up for ${esc(e.party)}">Follow-up</button>`},
   del:{h:'', s:()=>'', c:e => isAdm() ? `<button class="btn sm dng" data-act="delEntry" data-id="${e.id}" aria-label="Delete invoice">Delete</button>` : ''},
   act:{h:'', s:()=>'', c:e => (!isTop() && e.dueLocked) ? '' : S.editRow === e.id ? `<button class="btn sm sv" data-act="saveRow" data-id="${e.id}">Save</button> <button class="btn sm" data-act="cancelRow" aria-label="Cancel edit">✕</button>` : `<button class="btn sm" data-act="editRow" data-id="${e.id}" ${isTop() ? '' : 'title="You can change the Due on date only once"'}>Edit</button>`},
@@ -616,7 +622,7 @@ function viewOutstanding(){
       ${S.hideAreas ? `<label class="sf"><span>Area list</span><select data-f="sub" aria-label="Area"><option value="All">All areas</option>${subs.map(s => `<option ${F.sub === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></label>` : ''}
       </div>
     ${anyFilter() ? `<div class="sfon" role="status">🔎 Search is ON — showing only matching invoices: <span>${SF.filter(([k]) => (F['c_' + k] || '').trim()).map(([k, h]) => h + ' = "' + esc(F['c_' + k].trim()) + '"').join(' · ')}</span><button class="btn sm" data-act="clearF">Clear search</button></div>` : ''}
-    ${table(rows, F.sub === 'All' ? [...['sub','date','ref','party','amount','due','od','status','exp'], ...(isAdm() ? ['del'] : [])] : [...['sub','date','ref','party','amount','due','od','status', 'act', 'exp'], ...(isAdm() ? ['del'] : [])], {page:true})}`;
+    ${table(rows, F.sub === 'All' ? [...['sub','date','ref','party','amount','due','od','status','exp','rem'], ...(isAdm() ? ['del'] : [])] : [...['sub','date','ref','party','amount','due','od','status', 'act', 'exp', 'rem'], ...(isAdm() ? ['del'] : [])], {page:true})}`;
 }
 function viewParties(){
   const rows = active(scoped()); const m = {};
@@ -788,7 +794,7 @@ function render(){
   app.innerHTML = `<div class="shell ${S.sideHidden ? 'nosd' : ''}"><aside class="side"><div class="brand"><div class="lgo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12M6 9h12M9 4c5 0 7 2 7 5s-2 5-7 5l7 6"/></svg></div><div><b>Customer Outstanding</b><small>Follow-up tracker</small></div></div>
     ${nav.map(n => n[0] === 'create' ? `<button class="nav ${S.view === 'create' ? 'on' : ''}" data-act="toggleCreate" aria-expanded="${S.createOpen}">${ico('create')}Create<span class="chev">${S.createOpen ? '▲' : '▼'}</span></button>${!S.createOpen ? '' : (isAdm() ? ['Area','Sub Admin','Manager','Executive'] : ['Area','Manager','Executive']).map(r => `<button class="nav navc ${S.view === 'create' && F.cr === r ? 'on' : ''}" data-act="nav" data-k="create" data-role="${r}">${r}</button>`).join('')}` : `<button class="nav ${S.view === n[0] ? 'on' : ''}" data-act="nav" data-k="${n[0]}">${ico(n[0])}${n[1]}${n[0] === 'chat' && chatUnread() ? `<span class="cnt chc2" style="background:#12a594;margin-left:auto" title="Unread messages">${chatUnread()}</span>` : ''}${n[0] === 'outstanding' && isTop() && missedN ? `<span class="cnt" title="Expected date missed">${missedN}</span>` : ''}</button>`).join('')}
     </aside>
-    <main class="main" id="main"><div class="mtop"><button class="tg" data-act="toggleSide" aria-label="${S.sideHidden ? 'Show menu' : 'Hide menu'}" aria-expanded="${!S.sideHidden}" title="${S.sideHidden ? 'Show menu' : 'Hide menu'}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><span class="mut">${S.sideHidden ? 'Menu hidden' : ''}</span>
+    <main class="main" id="main"><div class="mtop"><button class="tg" data-act="toggleSide" aria-label="${S.sideHidden ? 'Show menu' : 'Hide menu'}" aria-expanded="${!S.sideHidden}" title="${S.sideHidden ? 'Show menu' : 'Hide menu'}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><button class="tgh" data-act="toggleSide" aria-label="${S.sideHidden ? 'Show menu' : 'Hide menu'}"><span class="tga" aria-hidden="true">◀</span><span class="tgt">Hide / Unhide</span></button>
   <div class="prof"><button class="av" data-act="myProfile" aria-label="Open my profile" title="My profile">${esc(me().name.trim().slice(0,1).toUpperCase())}</button><div class="pn"><b>${esc(me().name)}</b><small>${esc(me().role)}</small></div><button class="btn sm lo" data-act="logout">Log out</button></div></div>${me().mustChange && isAdm() ? '<div class="note bad" style="margin-bottom:14px">You are using a default password. <button class="btn sm" data-act="profile">Change password now</button></div>' : ''}${Store.mode === 'local' ? '<div class="note info" style="margin-bottom:14px">Local mode: data is saved only in this browser. Open the published link to share data with your team.</div>' : ''}${cur[2]()}</main></div>`;
   const m2 = $('#main'); if (m2) m2.scrollTop = st;
   if (aid){ const el = document.getElementById(aid); if (el){ el.focus(); if (sel && el.setSelectionRange) try { el.setSelectionRange(sel[0], sel[1]); } catch(e){} } }
@@ -1233,6 +1239,7 @@ document.addEventListener('change', async ev => {
   if (t.dataset.f){ if (t.type === 'search' || t.type === 'text') return; S.editRow = null; F[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.value; F.page = 1; render(); }
   else if (t.dataset.fc){ F[t.dataset.fc] = t.checked; F.page = 1; render(); }
   else if (t.dataset.chg === 'status'){ const e = D.entries.get(t.dataset.id); if (e && canStat() && sKey(e.status) !== t.value){ const o = {...e, status:t.value}; if (t.value === 'Paid') o.paidOn = TODAY; await Store.set('entries', e.id, o); await logEdit('Edit', e, [{f:'Status', from:sKey(e.status) === 'Open' ? 'Pending' : sKey(e.status), to:t.value === 'Open' ? 'Pending' : t.value}]); } }
+  else if (t.dataset.chg === 'remark'){ const e = D.entries.get(t.dataset.id); const v = t.value.trim().slice(0, 200); if (e && (e.remark || '') !== v){ await Store.set('entries', e.id, {...e, remark:v}); await logEdit('Edit', e, [{f:'Remark', from:e.remark || '—', to:v || '—'}]); } }
   else if (t.dataset.chg === 'expdate'){ const e = D.entries.get(t.dataset.id); if (e && !isTop() && expLock(e).open && (e.expectedDate || '') !== t.value && (!t.value || t.value >= TODAY)){ const o = {...e, expectedDate:t.value}; if (!t.value){ o.expSetAt = ''; o.expSetBy = ''; } else if (!e.expSetAt || !e.expectedDate){ o.expSetAt = nowISO(); o.expSetBy = S.me; } await Store.set('entries', e.id, o); await logEdit('Edit', e, [{f:'Expected Payment Date', from:showV('expectedDate', e.expectedDate), to:showV('expectedDate', t.value)}]); } else { forceRender = true; render(); } }
   else if (t.dataset.chg === 'assign'){ const e = D.entries.get(t.dataset.id); await Store.set('entries', e.id, {...e, assignedTo:t.value}); await logEdit('Edit', e, [{f:'Assigned To', from:uname(e.assignedTo) || '—', to:uname(t.value) || '—'}]); await logAct('Assign', `${e.party} ${e.ref || ''} → ${uname(t.value) || 'Unassigned'}`); }
   else if (t.id === 'chimg' && t.files[0]){ try { S.chatImg = await compressImg(t.files[0]); } catch(e){ S.chatImg = null; } t.value = ''; chatPrev(); }
