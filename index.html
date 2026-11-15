@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<meta name="app-build" content="20261115093852">
+<meta name="app-build" content="20261115094204">
 <style>
 /* Direction: midnight-indigo ledger. Hero total in a violet-to-rose gradient, every metric its own hue, areas as colour-coded tiles. */
 :root{
@@ -297,6 +297,7 @@ input[type=search]:not(:placeholder-shown){background:#fff4c2;border:2px solid #
 .updbox p{font-size:18px;line-height:1.55;color:#454872;margin:0 0 30px}
 .updok{height:60px;padding:0 38px;border:0;border-radius:16px;font:inherit;font-weight:800;font-size:19px;color:#fff;cursor:pointer;background:linear-gradient(135deg,#5b3fe0,#8a3ffc 60%,#e11d74);box-shadow:0 12px 24px rgba(91,63,224,.35)}
 .updok:focus-visible{outline:3px solid #14163a;outline-offset:3px}
+.cexp{padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.06);color:var(--mut,#667);font-size:12px;font-style:italic}
 </style>
 </head>
 <body>
@@ -716,7 +717,7 @@ function chatBodyHTML(){
   if (!ms.length) return '<div class="cemp"><div><p>No messages yet. Say hello.</p></div></div>';
   let out = '', day = ''; const seenTo = otherSeenTo(); const lastSeenId = [...ms].reverse().find(m => m.from === S.me && m.at <= seenTo)?.id;
   ms.forEach(m => { const d = dayOf(m.at); if (d !== day){ day = d; out += `<div class="cday"><span>${dayLabel(d)}</span></div>`; }
-    out += `<div class="mb ${m.from === S.me ? 'me' : 'th'}">${m.img ? `<img class="cimg" src="${m.img}" alt="Photo sent in chat" data-act="openImg" data-id="${m.id}" loading="lazy">` : ''}${m.text ? `<div class="mt">${esc(m.text).replace(/\n/g, '<br>')}</div>` : ''}<span class="mtm">${hhmm(m.at)}${m.from === S.me ? ` <b class="tk ${m.at <= seenTo ? 'sn' : ''}" title="${m.at <= seenTo ? 'Seen' : 'Delivered'}">✓✓</b>` : ''}</span>${m.id === lastSeenId ? `<span class="seen">Seen on ${dayOf(otherOpened() || m.at) === TODAY ? 'today' : fmtD(dayOf(otherOpened() || m.at))}, ${hhmm(otherOpened() || m.at)}</span>` : ''}</div>`; });
+    out += `<div class="mb ${m.from === S.me ? 'me' : 'th'}">${m.img ? `<img class="cimg" src="${m.img}" alt="Photo sent in chat" data-act="openImg" data-id="${m.id}" loading="lazy" onerror="this.outerHTML='<div class=&quot;cexp&quot;>Photo expired (photos are kept 7 days)</div>'">` : ''}${m.text ? `<div class="mt">${esc(m.text).replace(/\n/g, '<br>')}</div>` : ''}<span class="mtm">${hhmm(m.at)}${m.from === S.me ? ` <b class="tk ${m.at <= seenTo ? 'sn' : ''}" title="${m.at <= seenTo ? 'Seen' : 'Delivered'}">✓✓</b>` : ''}</span>${m.id === lastSeenId ? `<span class="seen">Seen on ${dayOf(otherOpened() || m.at) === TODAY ? 'today' : fmtD(dayOf(otherOpened() || m.at))}, ${hhmm(otherOpened() || m.at)}</span>` : ''}</div>`; });
   return out;
 }
 function viewChat(){
