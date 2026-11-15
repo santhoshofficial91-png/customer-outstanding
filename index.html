@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<meta name="app-build" content="20261115094204">
+<meta name="app-build" content="20261115135225">
 <style>
 /* Direction: midnight-indigo ledger. Hero total in a violet-to-rose gradient, every metric its own hue, areas as colour-coded tiles. */
 :root{
@@ -420,6 +420,7 @@ let rt = 0; const schedule = () => { clearTimeout(rt); rt = setTimeout(render, 8
 /* ---------- domain ---------- */
 const ROLES = ['Admin','Sub Admin','Manager','Executive'];
 const STATUSES = ['Open','Contacted','Promised','Disputed','Escalated','Paid'];
+const canStat = () => isAdm() || !!me()?.canStatus;
 const mine = x => isAdm() || x.by === S.me || (me()?.role === 'Manager' && D.users.get(x.by)?.role === 'Executive' && D.users.get(x.by)?.managerId === S.me);
 const missed = e => e.status !== 'Paid' && !!e.expectedDate && e.expectedDate < TODAY;
 function expLock(e){
@@ -491,7 +492,7 @@ const COLS = {
   amount:{h:'Pending Amount', r:1, s:e=>e.amount, c:e=>S.editRow === e.id && isTop() ? `<input class="ie" type="number" step="0.01" data-ie="amount" value="${e.amount}" aria-label="Pending Amount" style="width:110px;text-align:right">` : `<span class="num">${money(e.amount)}</span>`},
   due:{h:'Due on', s:e=>e.due||'', c:e=>S.editRow === e.id ? `<input class="ie" type="date" data-ie="due" value="${e.due || ''}" aria-label="Due on">` : fmtD(e.due)},
   od:{h:'Overdue Days', r:1, s:e=>od(e) ?? -99999, c:e=>{ const o = od(e); if (e.status === 'Paid') return '<span class="mut">—</span>'; if (o == null) return '<span class="mut">no due date</span>'; return o >= 0 ? `<span class="pill ${o > 60 ? 'bad' : o > 0 ? 'warn' : 'info'} num">${o} d</span>` : `<span class="mut num">due in ${-o} d</span>`; }},
-  status:{h:'Status', s:e=>sKey(e.status), c:e=>(F.sub === 'All' || !isAdm()) ? `<span class="pill ${STATUS_CLS[sKey(e.status)] || ''}">${sKey(e.status) === 'Open' ? 'Pending' : sKey(e.status)}</span>` : `<select class="stsel st-${sKey(e.status) === 'Open' ? 'p' : sKey(e.status) === 'Paid' ? 'g' : 'w'}" data-chg="status" data-id="${e.id}" aria-label="Status for ${esc(e.party)}">${STAT3.map(([v, l]) => `<option value="${v}" ${sKey(e.status) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`},
+  status:{h:'Status', s:e=>sKey(e.status), c:e=>(F.sub === 'All' || !canStat()) ? `<span class="pill ${STATUS_CLS[sKey(e.status)] || ''}">${sKey(e.status) === 'Open' ? 'Pending' : sKey(e.status)}</span>` : `<select class="stsel st-${sKey(e.status) === 'Open' ? 'p' : sKey(e.status) === 'Paid' ? 'g' : 'w'}" data-chg="status" data-id="${e.id}" aria-label="Status for ${esc(e.party)}">${STAT3.map(([v, l]) => `<option value="${v}" ${sKey(e.status) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`},
   who:{h:'Assigned To', s:e=>uname(e.assignedTo) || uname(ownerOf(e)), c:e=>e.assignedTo ? esc(uname(e.assignedTo)) : `<span class="mut">${esc(uname(ownerOf(e)) || 'Unassigned')}</span>`},
   next:{h:'Next Follow-up', s:e=>e.nextFu||'9999', c:e=>{ if (!e.nextFu) return '<span class="mut">—</span>'; const l = e.nextFu < TODAY; return `<span class="${l ? 'pill bad' : ''}">${fmtD(e.nextFu)}</span>`; }},
   promise:{h:'Promise', s:e=>e.promiseDate||'9999', c:e=>{ if (!e.promiseDate) return '<span class="mut">—</span>'; const l = e.promiseDate < TODAY && e.status !== 'Paid'; return `${fmtD(e.promiseDate)}${e.promiseAmt ? '<div class="mut num">' + money(e.promiseAmt) + '</div>' : ''}${l ? '<div><span class="pill bad">missed</span></div>' : ''}`; }},
@@ -1231,7 +1232,7 @@ document.addEventListener('change', async ev => {
   const t = ev.target;
   if (t.dataset.f){ if (t.type === 'search' || t.type === 'text') return; S.editRow = null; F[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.value; F.page = 1; render(); }
   else if (t.dataset.fc){ F[t.dataset.fc] = t.checked; F.page = 1; render(); }
-  else if (t.dataset.chg === 'status'){ const e = D.entries.get(t.dataset.id); if (e && isAdm() && sKey(e.status) !== t.value){ const o = {...e, status:t.value}; if (t.value === 'Paid') o.paidOn = TODAY; await Store.set('entries', e.id, o); await logEdit('Edit', e, [{f:'Status', from:sKey(e.status) === 'Open' ? 'Pending' : sKey(e.status), to:t.value === 'Open' ? 'Pending' : t.value}]); } }
+  else if (t.dataset.chg === 'status'){ const e = D.entries.get(t.dataset.id); if (e && canStat() && sKey(e.status) !== t.value){ const o = {...e, status:t.value}; if (t.value === 'Paid') o.paidOn = TODAY; await Store.set('entries', e.id, o); await logEdit('Edit', e, [{f:'Status', from:sKey(e.status) === 'Open' ? 'Pending' : sKey(e.status), to:t.value === 'Open' ? 'Pending' : t.value}]); } }
   else if (t.dataset.chg === 'expdate'){ const e = D.entries.get(t.dataset.id); if (e && !isTop() && expLock(e).open && (e.expectedDate || '') !== t.value && (!t.value || t.value >= TODAY)){ const o = {...e, expectedDate:t.value}; if (!t.value){ o.expSetAt = ''; o.expSetBy = ''; } else if (!e.expSetAt || !e.expectedDate){ o.expSetAt = nowISO(); o.expSetBy = S.me; } await Store.set('entries', e.id, o); await logEdit('Edit', e, [{f:'Expected Payment Date', from:showV('expectedDate', e.expectedDate), to:showV('expectedDate', t.value)}]); } else { forceRender = true; render(); } }
   else if (t.dataset.chg === 'assign'){ const e = D.entries.get(t.dataset.id); await Store.set('entries', e.id, {...e, assignedTo:t.value}); await logEdit('Edit', e, [{f:'Assigned To', from:uname(e.assignedTo) || '—', to:uname(t.value) || '—'}]); await logAct('Assign', `${e.party} ${e.ref || ''} → ${uname(t.value) || 'Unassigned'}`); }
   else if (t.id === 'chimg' && t.files[0]){ try { S.chatImg = await compressImg(t.files[0]); } catch(e){ S.chatImg = null; } t.value = ''; chatPrev(); }
