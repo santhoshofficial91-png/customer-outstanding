@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<meta name="app-build" content="20261115140245">
+<meta name="app-build" content="20261115141905">
 <style>
 /* Direction: midnight-indigo ledger. Hero total in a violet-to-rose gradient, every metric its own hue, areas as colour-coded tiles. */
 :root{
@@ -1300,7 +1300,9 @@ async function autoSeed(){
 /* tooltip */
 const tip = $('#tip');
 document.addEventListener('mouseover', ev => { const t = ev.target.closest('[data-tip]'); if (t){ tip.textContent = t.dataset.tip; tip.style.display = 'block'; } });
-document.addEventListener('mousemove', ev => { if (tip.style.display === 'block'){ tip.style.left = Math.min(ev.clientX + 12, innerWidth - 270) + 'px'; tip.style.top = (ev.clientY + 14) + 'px'; } });
+document.addEventListener('mousemove', ev => { if (tip.style.display === 'block' && !ev.target.closest?.('[data-tip]')){ tip.style.display = 'none'; return; } if (tip.style.display === 'block'){ tip.style.left = Math.min(ev.clientX + 12, innerWidth - 270) + 'px'; tip.style.top = (ev.clientY + 14) + 'px'; } });
+document.addEventListener('click', () => { tip.style.display = 'none'; }, true);
+document.addEventListener('scroll', () => { tip.style.display = 'none'; }, true);
 document.addEventListener('mouseout', ev => { if (ev.target.closest('[data-tip]')) tip.style.display = 'none'; });
 
 /* new-version notice (standalone build only) */
