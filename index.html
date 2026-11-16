@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<meta name="app-build" content="20261116085438">
+<meta name="app-build" content="20261116085708">
 <style>
 /* Direction: midnight-indigo ledger. Hero total in a violet-to-rose gradient, every metric its own hue, areas as colour-coded tiles. */
 :root{
@@ -1065,7 +1065,7 @@ function billSummaryHTML(){
   rows.forEach(b => { if (!b.date || !(b.sub in oAmt)) return; if (b.date >= fs && b.date <= TODAY) oAmt[b.sub] += bval(b); if (b.date.startsWith(ym)) mAmt[b.sub] += bval(b); });
   const mt = areas.reduce((x, a) => x + mAmt[a], 0), ot = areas.reduce((x, a) => x + oAmt[a], 0);
   if (!areas.length) return '';
-  const col = (title, map, tot) => `<div class="bcol"><h3>${esc(title)}</h3>${areas.map(a => `<div class="brow"><span>${esc(a)}</span><b class="num">${mr(map[a])}</b></div>`).join('')}<div class="brow btot"><span>Total</span><b class="num">${mr(tot)}</b></div></div>`;
+  const col = (title, map, tot) => `<div class="bcol"><h3>${esc(title)}</h3>${areas.filter(a => Math.round(map[a]) !== 0).map(a => `<div class="brow"><span>${esc(a)}</span><b class="num">${mr(map[a])}</b></div>`).join('') || '<div class="brow"><span class="mut">No billing yet</span></div>'}<div class="brow btot"><span>Total</span><b class="num">${mr(tot)}</b></div></div>`;
   return `<div class="card" style="margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Billing</h2><button class="btn sm" data-act="nav" data-k="billing">Open billing</button></div><div class="bgrid">${col(MONL, mAmt, mt)}${col('Overall ' + FYL, oAmt, ot)}</div></div>`;
 }
 function viewBilling(){
