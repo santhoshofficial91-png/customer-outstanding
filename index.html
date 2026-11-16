@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<meta name="app-build" content="20261116084053">
+<meta name="app-build" content="20261116085438">
 <style>
 /* Direction: midnight-indigo ledger. Hero total in a violet-to-rose gradient, every metric its own hue, areas as colour-coded tiles. */
 :root{
@@ -421,6 +421,12 @@ const Store = {
     if (this.sb){ const {error} = await this.sb.from('docs').upsert({col, id, data:obj}); if (error){ console.error(error); toast('Could not save: ' + error.message); this.sb.from('docs').select('col,id,data').eq('col', col).then(({data}) => { if (data){ D[col] = new Map(data.map(r => [r.id, {...r.data, id:r.id}])); schedule(); } }); } return; }
     if (this.db) await this.db.collection(col).doc(id).set(obj);
     else { (this.L[col] = this.L[col] || {})[id] = obj; try { localStorage.setItem('cof_local_v1', JSON.stringify(this.L)); } catch(e){} }
+  },
+  async delAll(col){
+    const n = D[col].size; D[col] = new Map(); schedule();
+    if (this.sb){ const {error} = await this.sb.from('docs').delete().eq('col', col); if (error){ toast('Could not delete: ' + error.message); try { await this.startSB(); } catch(e){} return false; } return true; }
+    if (this.db){ return false; }
+    delete this.L[col]; try { localStorage.setItem('cof_local_v1', JSON.stringify(this.L)); } catch(e){} return true;
   },
   async del(col, id){
     D[col].delete(id); schedule();
@@ -1068,7 +1074,7 @@ function viewBilling(){
   if (q) rows = rows.filter(b => ((b.party || '') + ' ' + (b.sub || '') + ' ' + (b.inv || '') + ' ' + (b.vtype || '')).toLowerCase().includes(q));
   const P = pg(rows, 'bil', 15), tAmt = sum(rows, b => b.amount || 0);
   const body = P.items.map(b => `<tr><td>${fmtD(b.date)}</td><td class="wrap">${esc(b.party)}</td><td>${esc(b.sub)}</td><td>${esc(b.vtype || '—')}</td><td>${b.inv ? `<span class="mono">${esc(b.inv)}</span>` : '<span class="mut">—</span>'}</td><td class="r"><span class="num">${inr2(b.amount)}</span></td>${isAdm() ? `<td><button class="btn sm dng" data-act="delBill" data-id="${b.id}" aria-label="Delete billing row">Delete</button></td>` : ''}</tr>`).join('');
-  return `<div class="head"><div><h1>Billing</h1><p class="sub">Customer billing details · ${rows.length} row${rows.length === 1 ? '' : 's'}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${canBill() ? '<button class="btn pri" data-act="addBill">+ Add billing</button><label class="btn" for="bfile" style="cursor:pointer">Import Excel</label><input id="bfile" type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:1px;height:1px">' : ''}<button class="btn" data-act="billSample">Sample Excel</button><button class="btn" data-act="billExport">Export Excel</button></div></div>
+  return `<div class="head"><div><h1>Billing</h1><p class="sub">Customer billing details · ${rows.length} row${rows.length === 1 ? '' : 's'}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${canBill() ? '<button class="btn pri" data-act="addBill">+ Add billing</button><label class="btn" for="bfile" style="cursor:pointer">Import Excel</label><input id="bfile" type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:1px;height:1px">' : ''}${isAdm() ? '<button class="btn dng" data-act="billDelAll">Delete all bill details</button>' : ''}<button class="btn" data-act="billSample">Sample Excel</button><button class="btn" data-act="billExport">Export Excel</button></div></div>
   <div class="bar"><input id="bq" data-f="bq" type="search" placeholder="Search customer, invoice no, area, voucher type" value="${esc(F.bq || '')}" style="min-width:300px" autocomplete="off"><span id="bmsg" class="mut"></span></div>
   <div class="tw"><table><thead><tr><th>Date</th><th>Customer Name</th><th>Area</th><th>Voucher Type</th><th>Invoice No</th><th class="r">Basic Amount</th>${isAdm() ? '<th></th>' : ''}</tr></thead><tbody>${body || `<tr><td colspan="7" class="empty">No billing yet.${canBill() ? ' Use Add billing or Import Excel.' : ''}</td></tr>`}</tbody>${rows.length ? `<tfoot><tr><td colspan="5"><b>Total</b></td><td class="r"><b class="num">${inr2(tAmt)}</b></td>${isAdm() ? '<td></td>' : ''}</tr></tfoot>` : ''}</table></div>${P.html}`;
 }
@@ -1269,6 +1275,8 @@ async function exportX(){
 /* ---------- events ---------- */
 const ACT = {
   nav:t => { S.editRow = null; S.view = t.dataset.k; if (t.dataset.role){ F.cr = t.dataset.role; createMsg = ''; S.createOpen = true; } closeDrawer(); forceRender = true; render(); },
+  billDelAll:() => { if (!isAdm()) return; openModal(`<h2>Delete all bill details?</h2><p>This permanently deletes all <b>${D.billing.size}</b> billing rows for every area. You can import them again from Excel afterwards. This cannot be undone.</p><div class="acts"><button class="btn" data-act="closeModal">No</button><button class="btn dng" data-act="billDelAllYes">Yes, delete all</button></div>`); },
+  billDelAllYes:async t => { if (!isAdm()) return; t.disabled = true; const n = D.billing.size; const ok = await Store.delAll('billing'); if (ok) await logAct('Billing delete all', n + ' billing rows deleted'); closeModal(); forceRender = true; render(); },
   addBill:() => { if (canBill()) billModal(); },
   applyBill:() => applyBill(),
   billSample:() => billSample(),
