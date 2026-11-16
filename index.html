@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<meta name="app-build" content="20261116090014">
+<meta name="app-build" content="20261116090444">
 <style>
 /* Direction: midnight-indigo ledger. Hero total in a violet-to-rose gradient, every metric its own hue, areas as colour-coded tiles. */
 :root{
@@ -149,7 +149,8 @@ th{background:var(--surface2);color:var(--ink2);font-weight:700;border-bottom:2p
 tbody tr[data-act]:hover{background:var(--info-bg)}
 .tw{border-radius:14px;box-shadow:0 8px 24px rgba(40,30,120,.06)}
 .pill{font-weight:700}
-.hero{grid-column:1/-1;border-radius:18px;padding:22px 26px;color:#fff;background:radial-gradient(600px 200px at 100% 0%,rgba(255,180,84,.35),transparent 60%),linear-gradient(120deg,#3b27c9 0%,#6a3ae6 45%,#d3217a 100%);box-shadow:0 18px 40px rgba(91,61,245,.30);display:grid;grid-template-columns:minmax(220px,1fr) minmax(260px,1.4fr);gap:18px 36px;align-items:center}
+.hero{grid-column:1/-1;border-radius:18px;padding:22px 26px;color:#fff;background:radial-gradient(600px 200px at 100% 0%,rgba(255,180,84,.35),transparent 60%),linear-gradient(120deg,#3b27c9 0%,#6a3ae6 45%,#d3217a 100%);box-shadow:0 18px 40px rgba(91,61,245,.30);display:grid;grid-template-columns:minmax(440px,1.5fr) minmax(260px,1fr);gap:18px 36px;align-items:center}
+.hero .hflex{display:flex;gap:30px;align-items:stretch;flex-wrap:nowrap}.hero .hflex>div:not(.hline){min-width:0}.hero .hline{width:2px;background:rgba(255,255,255,.45);border-radius:2px;align-self:stretch}
 .hero .hk{font-weight:600;opacity:.85}.hero .hv{font-size:44px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin:4px 0}.hero .hs{opacity:.85}
 .hseg{display:flex;height:16px;border-radius:8px;overflow:hidden;background:rgba(255,255,255,.2);gap:2px}.hseg i{display:block;height:100%}
 .hleg{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:13px}.hleg span{display:flex;gap:6px;align-items:center}.hleg b{font-weight:800}.hleg u{width:10px;height:10px;border-radius:3px;display:inline-block}
@@ -174,7 +175,7 @@ tbody tr[data-act]:hover{background:var(--info-bg)}
 .atile.all b,.atile.all .am,.atile.all small{color:#fff}.atile.all::before{display:none}.atile.all .am{font-size:22px}
 .atile.all.on{outline:3px solid #ffb454;outline-offset:2px}
 .eh{display:flex;flex-direction:column;gap:3px}.eh .ch{color:var(--ink2)}.eh s{text-decoration:none;color:var(--bad);font-weight:700}.eh em{font-style:normal;color:var(--good);font-weight:700}
-@media (max-width:760px){.areas{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{grid-template-columns:1fr}.hero .hv{font-size:34px}.nav.navc{padding:7px 12px}.brand b,.brand small{display:none}}
+@media (max-width:760px){.areas{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{grid-template-columns:1fr}.hero .hflex{flex-wrap:wrap;gap:16px}.hero .hline{display:none}.hero .hv{font-size:34px}.nav.navc{padding:7px 12px}.brand b,.brand small{display:none}}
 .kp4{grid-template-columns:repeat(4,minmax(0,1fr))}@media (max-width:1000px){.kp4{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:520px){.kp4{grid-template-columns:1fr}}.nav .chev{font-size:9px}
 #app{height:100%}
 
@@ -590,7 +591,7 @@ function viewDashboard(){
   return `<div class="head"><div><h1>Dashboard</h1><p class="sub">${isTop() ? 'All areas' : isMgrUp() ? 'Your areas' : 'Your invoices'} · as of ${fmtD(TODAY)}</p></div></div>${annAdminHTML()}
   ${missCard}
   <div class="grid kp4">
-    <div class="hero"><div><div class="hk">Total outstanding${!isTop() && mySubs().length ? `<span class="har">${esc(mySubs().join(' / '))}</span>` : ''}</div><div class="hv">${compact(total)}</div><div class="hs">${rows.length} invoices · ${parties} parties</div></div>
+    <div class="hero"><div class="hflex"><div><div class="hk">Total outstanding${!isTop() && mySubs().length ? `<span class="har">${esc(mySubs().join(' / '))}</span>` : ''}</div><div class="hv">${compact(total)}</div><div class="hs">${rows.length} invoices · ${parties} parties</div></div><div class="hline" aria-hidden="true"></div>${billHeroHTML()}</div>
       <div><div class="hseg" role="img" aria-label="Not yet due ${compact(ndAmt)}, overdue ${compact(overAmt)}, no due date ${compact(noAmt)}"><i style="width:${pc(ndAmt)}%;background:#7dd3fc"></i><i style="width:${pc(overAmt)}%;background:#fb7185"></i><i style="width:${pc(noAmt)}%;background:rgba(255,255,255,.55)"></i></div>
       <div class="hleg"><span><u style="background:#7dd3fc"></u>Not yet due <b>${compact(ndAmt)}</b></span><span><u style="background:#fb7185"></u>Overdue <b>${compact(overAmt)}</b></span><span><u style="background:rgba(255,255,255,.55)"></u>No due date <b>${compact(noAmt)}</b></span></div></div></div>
     <div class="card kpi bad" style="--c:#e5484d"><div class="ic">${I.over}</div><div class="l">Overdue</div><div class="v">${compact(overAmt)}</div><div class="s">${over.length} invoices · ${total ? Math.round(overAmt/total*100) : 0}% of total</div></div>
@@ -599,8 +600,7 @@ function viewDashboard(){
       <div class="s">${wk.length} invoice${wk.length === 1 ? '' : 's'} with an Expected Date this week</div></div>
     <div class="card kpi" style="--c:#12a594"><div class="ic">${I.wallet}</div><div class="l">Collected this month</div><div class="v">${compact(collected)}</div><div class="s">payments recorded</div></div>
   </div>
-  ${billSummaryHTML()}
-  <div class="grid g2" style="margin-top:14px">
+    <div class="grid g2" style="margin-top:14px">
     <div class="card"><h2>Aging of outstanding</h2><div class="cols">${cols}</div></div>
     <div class="card"><h2>Outstanding by area</h2>${bySub.length ? hbars(bySub, 'goSub') : '<div class="empty">No data</div>'}</div>
     <div class="card"><h2>Top parties</h2>${top.length ? hbars(top, 'goParty', 't') : '<div class="empty">No data</div>'}</div>
@@ -625,7 +625,7 @@ function filtered(){
 }
 function viewOutstanding(){
   const base = F.showPaid ? scoped() : active(scoped());
-  const subs = mySubs();
+  const subs = mySubs().filter(s => F.sub === s || active(scoped()).some(e => e.sub === s));
   const HUES = ['#5b3df5','#e11d74','#0ea5e9','#12a594','#e08a00','#7c3aed','#e5484d','#0891b2','#4d9a1f','#c026d3'];
   const lab = s => { const n = execs().filter(u => (u.subs || []).includes(s)).map(u => u.name); return n.length ? s + ' / ' + n.join(', ') : s; };
   const tabs = ['All', ...subs].map((s, i) => { const r = s === 'All' ? base : base.filter(e => e.sub === s); return `<button class="atile ${s === 'All' ? 'all' : ''} ${F.sub === s ? 'on' : ''}" style="--h:${HUES[(i - 1 + HUES.length) % HUES.length]}" data-act="tab" data-k="${esc(s)}" aria-pressed="${F.sub === s}"><b title="${esc(lab(s))}">${s === 'All' ? 'All areas' : esc(lab(s))}</b><span class="am">${compact(sum(r))}</span><small>${r.length} inv.</small></button>`; }).join('');
@@ -1059,6 +1059,12 @@ const bval = b => b.amount || 0;
 const fyStart = (() => { const [y, m] = TODAY.split('-').map(Number); return m >= 4 ? y : y - 1; })();
 const FYL = String(fyStart).slice(2) + '-' + String(fyStart + 1).slice(2);
 const MONL = FULLMON[+TODAY.split('-')[1] - 1] + ' ' + TODAY.slice(2, 4);
+
+const billFY = () => { const fs = fyStart + '-04-01'; return billRows().filter(b => b.date && b.date >= fs && b.date <= TODAY); };
+function billHeroHTML(){
+  const r = billFY(), t = sum(r, b => b.amount || 0), parties = new Set(r.map(b => (b.party || '').toLowerCase())).size;
+  return `<div><div class="hk">Total billing<span class="har">${FYL}</span></div><div class="hv">${compact(t)}</div><div class="hs">${r.length} invoices · ${parties} parties</div></div>`;
+}
 function billSummaryHTML(){
   const rows = billRows(), ym = TODAY.slice(0, 7), fs = fyStart + '-04-01';
   const areas = billAreas();
@@ -1070,13 +1076,13 @@ function billSummaryHTML(){
   return `<div class="card" style="margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Billing</h2><button class="btn sm" data-act="nav" data-k="billing">Open billing</button></div><div class="bgrid">${col(MONL, mAmt, mt)}${col('Overall ' + FYL, oAmt, ot)}</div></div>`;
 }
 function viewBilling(){
-  const q = (F.bq || '').trim().toLowerCase();
   let rows = billRows().sort((a, b) => (b.date || '') < (a.date || '') ? -1 : (b.date || '') > (a.date || '') ? 1 : 0);
-  if (q) rows = rows.filter(b => ((b.party || '') + ' ' + (b.sub || '') + ' ' + (b.inv || '') + ' ' + (b.vtype || '')).toLowerCase().includes(q));
+  const BF = {b_date:b => fmtD(b.date) + ' ' + (b.date || ''), b_party:b => b.party || '', b_sub:b => b.sub || '', b_vtype:b => b.vtype || '', b_inv:b => b.inv || '', b_amt:b => (b.amount || 0).toFixed(2) + ' ' + inr2(b.amount) + ' ' + String(b.amount || 0)};
+  Object.keys(BF).forEach(k => { const q = (F[k] || '').trim().toLowerCase(); if (q) rows = rows.filter(b => BF[k](b).toLowerCase().includes(q)); });
   const P = pg(rows, 'bil', 15), tAmt = sum(rows, b => b.amount || 0);
   const body = P.items.map(b => `<tr><td>${fmtD(b.date)}</td><td class="wrap">${esc(b.party)}</td><td>${esc(b.sub)}</td><td>${esc(b.vtype || '—')}</td><td>${b.inv ? `<span class="mono">${esc(b.inv)}</span>` : '<span class="mut">—</span>'}</td><td class="r"><span class="num">${inr2(b.amount)}</span></td>${isAdm() ? `<td><button class="btn sm dng" data-act="delBill" data-id="${b.id}" aria-label="Delete billing row">Delete</button></td>` : ''}</tr>`).join('');
-  return `<div class="head"><div><h1>Billing</h1><p class="sub">Customer billing details · ${rows.length} row${rows.length === 1 ? '' : 's'}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${canBill() ? '<button class="btn pri" data-act="addBill">+ Add billing</button><label class="btn" for="bfile" style="cursor:pointer">Import Excel</label><input id="bfile" type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:1px;height:1px">' : ''}${isAdm() ? '<button class="btn dng" data-act="billDelAll">Delete all bill details</button>' : ''}<button class="btn" data-act="billSample">Sample Excel</button><button class="btn" data-act="billExport">Export Excel</button></div></div>
-  <div class="bar"><input id="bq" data-f="bq" type="search" placeholder="Search customer, invoice no, area, voucher type" value="${esc(F.bq || '')}" style="min-width:300px" autocomplete="off"><span id="bmsg" class="mut"></span></div>
+  return `<div class="head"><div><h1>Billing</h1><p class="sub">Customer billing details · ${rows.length} row${rows.length === 1 ? '' : 's'}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${canBill() ? '<button class="btn pri" data-act="addBill">+ Add billing</button><label class="btn" for="bfile" style="cursor:pointer">Import Excel</label><input id="bfile" type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:1px;height:1px">' : ''}${isAdm() ? '<button class="btn dng" data-act="billDelAll">Delete all bill details</button><button class="btn" data-act="billSample">Sample Excel</button>' : ''}<button class="btn" data-act="billExport">Export Excel</button></div></div>
+  <div class="bar sfb" role="search" aria-label="Search the table" style="margin-top:40px">${[['b_date','Date'],['b_party','Customer Name'],['b_sub','Area'],['b_vtype','Voucher Type'],['b_inv','Invoice No'],['b_amt','Basic Amount']].map(([k, h]) => `<label class="sf"><span>${h}</span><input id="${k}" data-f="${k}" type="search" placeholder="Search" value="${esc(F[k] || '')}" autocomplete="off"></label>`).join('')}<span id="bmsg" class="mut"></span></div>
   <div class="tw"><table><thead><tr><th>Date</th><th>Customer Name</th><th>Area</th><th>Voucher Type</th><th>Invoice No</th><th class="r">Basic Amount</th>${isAdm() ? '<th></th>' : ''}</tr></thead><tbody>${body || `<tr><td colspan="7" class="empty">No billing yet.${canBill() ? ' Use Add billing or Import Excel.' : ''}</td></tr>`}</tbody>${rows.length ? `<tfoot><tr><td colspan="5"><b>Total</b></td><td class="r"><b class="num">${inr2(tAmt)}</b></td>${isAdm() ? '<td></td>' : ''}</tr></tfoot>` : ''}</table></div>${P.html}`;
 }
 function billModal(){
@@ -1280,7 +1286,7 @@ const ACT = {
   billDelAllYes:async t => { if (!isAdm()) return; t.disabled = true; const n = D.billing.size; const ok = await Store.delAll('billing'); if (ok) await logAct('Billing delete all', n + ' billing rows deleted'); closeModal(); forceRender = true; render(); },
   addBill:() => { if (canBill()) billModal(); },
   applyBill:() => applyBill(),
-  billSample:() => billSample(),
+  billSample:() => { if (isAdm()) return billSample(); },
   billExport:() => { const rows = billRows().sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1); return exportSheet('Billing', 'Billing', BILL_HEAD, rows.map(b => [xd(b.date), b.party, b.sub, b.vtype || '', b.inv || '', b.amount || 0]), [14, 34, 18, 16, 18, 16]); },
   delBill:async t => { const b = D.billing.get(t.dataset.id); if (!b || !isAdm()) return; if (!confirmDel(t, 'Delete billing row?')) return; await Store.del('billing', b.id); await logAct('Billing delete', `${b.party} ${b.inv || ''}`); },
   annOk:() => { try { document.activeElement?.blur(); document.querySelectorAll('[data-chg]').forEach(el => el.dispatchEvent(new Event('change', {bubbles:true}))); } catch(e){} const st = annState(); if (st){ try { sessionStorage.setItem('ann_ack', String(st.a.at)); } catch(e){} } annTick(); },
