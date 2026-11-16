@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<meta name="app-build" content="20261116090727">
+<meta name="app-build" content="20261116112814">
 <style>
 /* Direction: midnight-indigo ledger. Hero total in a violet-to-rose gradient, every metric its own hue, areas as colour-coded tiles. */
 :root{
@@ -313,6 +313,8 @@ input[type=search]:not(:placeholder-shown){background:#fff4c2;border:2px solid #
 .annadm{margin:14px 0 4px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .annadm .mut{flex:1;min-width:220px}
 .bgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-top:12px}.bcol h3{font-size:16px;margin:0 0 8px}.brow{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line)}.brow.btot{border-bottom:0;border-top:2px solid var(--ink);margin-top:2px;font-weight:800}
+.dsf{flex:2 1 270px;max-width:340px}.drng{display:flex;gap:6px;align-items:center}.drng input{flex:1;min-width:0;padding:9px 8px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:13px;background:var(--surface);color:var(--ink)}.drng i{font-style:normal;font-weight:600;color:var(--ink2)}
+.annclock{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;color:#fff;background:#14163a;padding:6px 18px;border-radius:12px;letter-spacing:.02em}
 </style>
 </head>
 <body>
@@ -454,7 +456,8 @@ function expLock(e){
   const h = Math.floor(ms / 3600000), m = Math.ceil((ms % 3600000) / 60000);
   return {open:true, left: h ? h + ' h ' + (m < 60 ? m : 0) + ' m' : m + ' m'};
 }
-const STAT3 = [['Open','Pending'],['Part Payment','Part Payment'],['Paid','Paid']];
+const STAT3 = [['Open','Pending'],['Part Payment','Part Payment'],['Paid','Received']];
+const sLbl = k => k === 'Open' ? 'Pending' : k === 'Paid' ? 'Received' : k;
 const sKey = s => s === 'Paid' ? 'Paid' : s === 'Part Payment' ? 'Part Payment' : 'Open';
 const STATUS_CLS = {Open:'', Contacted:'info', Promised:'info', Disputed:'warn', Escalated:'bad', Paid:'good', 'Part Payment':'warn'};
 const BUCKETS = [
@@ -515,7 +518,7 @@ const COLS = {
   amount:{h:'Pending Amount', r:1, s:e=>e.amount, c:e=>S.editRow === e.id && isTop() ? `<input class="ie" type="number" step="0.01" data-ie="amount" value="${e.amount}" aria-label="Pending Amount" style="width:110px;text-align:right">` : `<span class="num">${money(e.amount)}</span>`},
   due:{h:'Due on', s:e=>e.due||'', c:e=>S.editRow === e.id ? `<input class="ie" type="date" data-ie="due" value="${e.due || ''}" aria-label="Due on">` : fmtD(e.due)},
   od:{h:'Overdue Days', r:1, s:e=>od(e) ?? -99999, c:e=>{ const o = od(e); if (e.status === 'Paid') return '<span class="mut">—</span>'; if (o == null) return '<span class="mut">no due date</span>'; return o >= 0 ? `<span class="pill ${o > 60 ? 'bad' : o > 0 ? 'warn' : 'info'} num">${o} d</span>` : `<span class="mut num">due in ${-o} d</span>`; }},
-  status:{h:'Status', s:e=>sKey(e.status), c:e=>(F.sub === 'All' || !canStat()) ? `<span class="pill ${STATUS_CLS[sKey(e.status)] || ''}">${sKey(e.status) === 'Open' ? 'Pending' : sKey(e.status)}</span>` : `<select class="stsel st-${sKey(e.status) === 'Open' ? 'p' : sKey(e.status) === 'Paid' ? 'g' : 'w'}" data-chg="status" data-id="${e.id}" aria-label="Status for ${esc(e.party)}">${STAT3.map(([v, l]) => `<option value="${v}" ${sKey(e.status) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`},
+  status:{h:'Status', s:e=>sLbl(sKey(e.status)), c:e=>(F.sub === 'All' || !canStat()) ? `<span class="pill ${STATUS_CLS[sKey(e.status)] || ''}">${sLbl(sKey(e.status))}</span>` : `<select class="stsel st-${sKey(e.status) === 'Open' ? 'p' : sKey(e.status) === 'Paid' ? 'g' : 'w'}" data-chg="status" data-id="${e.id}" aria-label="Status for ${esc(e.party)}">${STAT3.map(([v, l]) => `<option value="${v}" ${sKey(e.status) === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`},
   who:{h:'Assigned To', s:e=>uname(e.assignedTo) || uname(ownerOf(e)), c:e=>e.assignedTo ? esc(uname(e.assignedTo)) : `<span class="mut">${esc(uname(ownerOf(e)) || 'Unassigned')}</span>`},
   next:{h:'Next Follow-up', s:e=>e.nextFu||'9999', c:e=>{ if (!e.nextFu) return '<span class="mut">—</span>'; const l = e.nextFu < TODAY; return `<span class="${l ? 'pill bad' : ''}">${fmtD(e.nextFu)}</span>`; }},
   promise:{h:'Promise', s:e=>e.promiseDate||'9999', c:e=>{ if (!e.promiseDate) return '<span class="mut">—</span>'; const l = e.promiseDate < TODAY && e.status !== 'Paid'; return `${fmtD(e.promiseDate)}${e.promiseAmt ? '<div class="mut num">' + money(e.promiseAmt) + '</div>' : ''}${l ? '<div><span class="pill bad">missed</span></div>' : ''}`; }},
@@ -614,7 +617,7 @@ const SFV = {sub:e=>e.sub, date:e=>fmtD(e.date) + ' ' + (e.date || ''), ref:e=>e
 const anyFilter = () => SF.some(([k]) => (F['c_' + k] || '').trim()) || F.aging || F.exec || F.issues || F.q;
 function filtered(){
   let rows = scoped();
-  if (!F.showPaid && !/paid/i.test(F.c_status || '')) rows = active(rows);
+  if (!F.showPaid && !/paid|received/i.test(F.c_status || '')) rows = active(rows);
   if (F.sub !== 'All') rows = rows.filter(e => e.sub === F.sub);
   if (F.aging) rows = rows.filter(e => bucketOf(e) === F.aging);
   if (F.exec) rows = rows.filter(e => (F.exec === '_none' ? !e.assignedTo : e.assignedTo === F.exec));
@@ -779,8 +782,8 @@ function viewCollection(){
   if (q) rows = rows.filter(e => (e.party + ' ' + (e.ref || '') + ' ' + e.sub).toLowerCase().includes(q));
   rows.sort((a, b) => (b.paidOn || '') < (a.paidOn || '') ? -1 : 1);
   const P = pg(rows, 'col'), total = sum(rows);
-  const body = P.items.map(e => `<tr><td>${esc(e.sub)}</td><td>${fmtD(e.date)}</td><td>${e.ref ? `<span class="mono">${esc(e.ref)}</span>` : '<span class="mut">—</span>'}</td><td class="wrap">${esc(e.party)}</td><td class="r"><span class="num">${money(e.amount)}</span></td><td>${fmtD(e.due)}</td><td>${e.paidOn ? fmtD(e.paidOn) : '<span class="mut">—</span>'}</td><td><span class="pill good">Paid</span></td>${canStat() ? `<td><button class="btn sm" data-act="revoke" data-id="${e.id}" title="Move back to Pending in ${esc(e.sub)}">Revoke</button>${isAdm() ? ` <button class="btn sm dng" data-act="delEntry" data-id="${e.id}" aria-label="Delete invoice">Delete</button>` : ''}</td>` : ''}</tr>`).join('');
-  return `<div class="head"><div><h1>Collection</h1><p class="sub">Invoices marked Paid move here. ${canStat() ? 'Revoke sends an invoice back to its area as Pending.' : ''}</p></div><div style="display:flex;gap:12px;align-items:center"><div class="mut"><b class="num">${money(total)}</b> · ${rows.length} invoices</div>${XB('exportCol')}</div></div>
+  const body = P.items.map(e => `<tr><td>${esc(e.sub)}</td><td>${fmtD(e.date)}</td><td>${e.ref ? `<span class="mono">${esc(e.ref)}</span>` : '<span class="mut">—</span>'}</td><td class="wrap">${esc(e.party)}</td><td class="r"><span class="num">${money(e.amount)}</span></td><td>${fmtD(e.due)}</td><td>${e.paidOn ? fmtD(e.paidOn) : '<span class="mut">—</span>'}</td><td><span class="pill good">Received</span></td>${canStat() ? `<td><button class="btn sm" data-act="revoke" data-id="${e.id}" title="Move back to Pending in ${esc(e.sub)}">Revoke</button>${isAdm() ? ` <button class="btn sm dng" data-act="delEntry" data-id="${e.id}" aria-label="Delete invoice">Delete</button>` : ''}</td>` : ''}</tr>`).join('');
+  return `<div class="head"><div><h1>Collection</h1><p class="sub">Invoices marked Received move here. ${canStat() ? 'Revoke sends an invoice back to its area as Pending.' : ''}</p></div><div style="display:flex;gap:12px;align-items:center"><div class="mut"><b class="num">${money(total)}</b> · ${rows.length} invoices</div>${XB('exportCol')}</div></div>
   <div class="bar"><input id="cq" data-f="cq" type="search" placeholder="Search party, ref no, area" value="${esc(F.cq || '')}" style="min-width:260px" autocomplete="off"></div>
   <div class="tw"><table><thead><tr><th>Area</th><th>Date</th><th>Ref No</th><th>Party Name</th><th class="r">Amount</th><th>Due on</th><th>Received on</th><th>Status</th>${canStat() ? '<th></th>' : ''}</tr></thead><tbody>${body || `<tr><td colspan="9" class="empty">No paid invoices yet. Set an invoice's Status to Paid on the Outstanding page and it appears here.</td></tr>`}</tbody></table></div>${P.html}`;
 }
@@ -1078,12 +1081,14 @@ function billSummaryHTML(){
 }
 function viewBilling(){
   let rows = billRows().sort((a, b) => (b.date || '') < (a.date || '') ? -1 : (b.date || '') > (a.date || '') ? 1 : 0);
-  const BF = {b_date:b => fmtD(b.date) + ' ' + (b.date || ''), b_party:b => b.party || '', b_sub:b => b.sub || '', b_vtype:b => b.vtype || '', b_inv:b => b.inv || '', b_amt:b => (b.amount || 0).toFixed(2) + ' ' + inr2(b.amount) + ' ' + String(b.amount || 0)};
+  const BF = {b_party:b => b.party || '', b_sub:b => b.sub || '', b_vtype:b => b.vtype || '', b_inv:b => b.inv || '', b_amt:b => (b.amount || 0).toFixed(2) + ' ' + inr2(b.amount) + ' ' + String(b.amount || 0)};
+  if (F.b_from) rows = rows.filter(b => b.date && b.date >= F.b_from);
+  if (F.b_to) rows = rows.filter(b => b.date && b.date <= F.b_to);
   Object.keys(BF).forEach(k => { const q = (F[k] || '').trim().toLowerCase(); if (q) rows = rows.filter(b => BF[k](b).toLowerCase().includes(q)); });
   const P = pg(rows, 'bil', 15), tAmt = sum(rows, b => b.amount || 0);
   const body = P.items.map(b => `<tr><td>${fmtD(b.date)}</td><td class="wrap">${esc(b.party)}</td><td>${esc(b.sub)}</td><td>${esc(b.vtype || '—')}</td><td>${b.inv ? `<span class="mono">${esc(b.inv)}</span>` : '<span class="mut">—</span>'}</td><td class="r"><span class="num">${inr2(b.amount)}</span></td>${isAdm() ? `<td><button class="btn sm dng" data-act="delBill" data-id="${b.id}" aria-label="Delete billing row">Delete</button></td>` : ''}</tr>`).join('');
   return `<div class="head"><div><h1>Billing</h1><p class="sub">Customer billing details · ${rows.length} row${rows.length === 1 ? '' : 's'}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${canBill() ? '<button class="btn pri" data-act="addBill">+ Add billing</button><label class="btn" for="bfile" style="cursor:pointer">Import Excel</label><input id="bfile" type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:1px;height:1px">' : ''}${isAdm() ? '<button class="btn dng" data-act="billDelAll">Delete all bill details</button><button class="btn" data-act="billSample">Sample Excel</button>' : ''}<button class="btn" data-act="billExport">Export Excel</button></div></div>
-  <div class="bar sfb" role="search" aria-label="Search the table" style="margin-top:40px">${[['b_date','Date'],['b_party','Customer Name'],['b_sub','Area'],['b_vtype','Voucher Type'],['b_inv','Invoice No'],['b_amt','Basic Amount']].map(([k, h]) => `<label class="sf"><span>${h}</span><input id="${k}" data-f="${k}" type="search" placeholder="Search" value="${esc(F[k] || '')}" autocomplete="off"></label>`).join('')}<span id="bmsg" class="mut"></span></div>
+  <div class="bar sfb" role="search" aria-label="Search the table" style="margin-top:40px"><div class="sf dsf"><span>Date: From – To</span><span class="drng"><input id="b_from" data-f="b_from" type="date" value="${esc(F.b_from || '')}" aria-label="From date"><i aria-hidden="true">to</i><input id="b_to" data-f="b_to" type="date" value="${esc(F.b_to || '')}" aria-label="To date"></span></div>${[['b_party','Customer Name'],['b_sub','Area'],['b_vtype','Voucher Type'],['b_inv','Invoice No'],['b_amt','Basic Amount']].map(([k, h]) => `<label class="sf"><span>${h}</span><input id="${k}" data-f="${k}" type="search" placeholder="Search" value="${esc(F[k] || '')}" autocomplete="off"></label>`).join('')}<span id="bmsg" class="mut"></span></div>
   <div class="tw"><table><thead><tr><th>Date</th><th>Customer Name</th><th>Area</th><th>Voucher Type</th><th>Invoice No</th><th class="r">Basic Amount</th>${isAdm() ? '<th></th>' : ''}</tr></thead><tbody>${body || `<tr><td colspan="7" class="empty">No billing yet.${canBill() ? ' Use Add billing or Import Excel.' : ''}</td></tr>`}</tbody>${rows.length ? `<tfoot><tr><td colspan="5"><b>Total</b></td><td class="r"><b class="num">${inr2(tAmt)}</b></td>${isAdm() ? '<td></td>' : ''}</tr></tfoot>` : ''}</table></div>${P.html}`;
 }
 function billModal(){
@@ -1250,7 +1255,7 @@ const XACT = {
     ['Area','Date','Ref No','Party Name','Pending Amount','Due on','Overdue Days','Status','Expected Date'],
     sortRows(filtered()).map(e => [e.sub, xd(e.date), e.ref || '', e.party, e.amount, xd(e.due), e.due && e.status !== 'Paid' ? od(e) : '', stLabel(e), xd(e.expectedDate)]), [16,13,18,42,16,13,14,14,14]),
   exportCol:() => exportSheet('Collection', 'Collection', ['Area','Date','Ref No','Party Name','Amount','Due on','Received on','Status'],
-    colList().map(e => [e.sub, xd(e.date), e.ref || '', e.party, e.amount, xd(e.due), xd(e.paidOn), 'Paid']), [16,13,18,42,16,13,14,10]),
+    colList().map(e => [e.sub, xd(e.date), e.ref || '', e.party, e.amount, xd(e.due), xd(e.paidOn), 'Received']), [16,13,18,42,16,13,14,10]),
   exportEdits:() => exportSheet('Edit_History', 'Edit History', ['When','Edited by','Role','Area','Ref No','Party Name','Type','What changed'],
     editsList().map(h => [fmtTS(h.at), h.byName, h.role || '', h.sub || '', h.ref || '', h.party, h.type, (h.changes || []).map(c => `${c.f}: ${c.from} → ${c.to}`).join('; ')]), [18,18,12,16,18,36,9,70]),
   exportAct:() => exportSheet('Activity_Log', 'Activity log', ['When','Who','Action','Details'],
@@ -1298,7 +1303,7 @@ const ACT = {
   toggleCreate:() => { S.createOpen = !S.createOpen; forceRender = true; render(); },
   open:t => openDrawer(t.dataset.id), closeDrawer, closeModal,
   page:t => { S.editRow = null; const k = t.dataset.pk, v = +t.dataset.k || 1; if (k) F.pgs[k] = v; else F.page = v; render(); },
-  revoke:async t => { const e = D.entries.get(t.dataset.id); if (!e || !canStat()) return; await Store.set('entries', e.id, {...e, status:'Open', paidOn:''}); await logEdit('Edit', e, [{f:'Status', from:'Paid', to:'Pending (revoked)'}]); await logAct('Revoke paid', `${e.party} ${e.ref || ''} back to ${e.sub}`); },
+  revoke:async t => { const e = D.entries.get(t.dataset.id); if (!e || !canStat()) return; await Store.set('entries', e.id, {...e, status:'Open', paidOn:''}); await logEdit('Edit', e, [{f:'Status', from:'Received', to:'Pending (revoked)'}]); await logAct('Revoke received', `${e.party} ${e.ref || ''} back to ${e.sub}`); },
   sort:t => { S.editRow = null; F.page = 1; const k = t.dataset.k; if (F.sort === k) F.dir *= -1; else { F.sort = k; F.dir = (k === 'amount' || k === 'od') ? -1 : 1; } render(); },
   tab:t => { S.editRow = null; F.sub = t.dataset.k; F.page = 1; render(); },
   fuTab:t => { F.fu = t.dataset.k; render(); },
@@ -1471,8 +1476,8 @@ function annAdminRaw(){
   if (!isAdm()) return '';
   const st = annState();
   if (!st) return `<div class="annadm" id="annadm"><div class="mut"><b>Update announcement</b><br>Warns every user that an update starts in 1 minute and asks them not to enter anything for 5 minutes.</div><button class="btn pri" data-act="annStart">Announce update (1 min warning)</button></div>`;
-  const msg = st.phase === 'warn' ? `Announcement is live. Update starts in <b>${mmss(ANN_WARN - st.t)}</b>.` : st.phase === 'work' ? `Users are locked out. Auto-opens in <b>${mmss(ANN_END - st.t)}</b>.` : 'The announcement timed out. Users can use the app again.';
-  return `<div class="annadm" id="annadm"><div class="mut"><b>Update announcement</b><br>${msg}</div><button class="btn pri" data-act="annClose">${st.phase === 'done' ? 'Clear announcement' : 'OK, update finished — close announcement'}</button></div>`;
+  const clock = t => `<span class="annclock" role="timer">${t}</span>`; const msg = st.phase === 'warn' ? 'Announcement is live. Update starts in' : st.phase === 'work' ? 'Users are locked out. App opens again in' : 'The announcement timed out. Users can use the app again.'; const clk = st.phase === 'warn' ? clock(mmss(ANN_WARN - st.t)) : st.phase === 'work' ? clock(mmss(ANN_END - st.t)) : '';
+  return `<div class="annadm" id="annadm"><div class="mut"><b>Update announcement</b><br>${msg}</div>${clk}<button class="btn pri" data-act="annClose">${st.phase === 'done' ? 'Clear announcement' : 'OK, update finished — close announcement'}</button></div>`;
 }
 const annAcked = st => { try { return sessionStorage.getItem('ann_ack') === String(st.a.at); } catch(e){ return false; } };
 function annTick(){
