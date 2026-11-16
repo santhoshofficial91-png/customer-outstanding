@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<meta name="app-build" content="20261116074019">
+<meta name="app-build" content="20261116081824">
 <style>
 /* Direction: midnight-indigo ledger. Hero total in a violet-to-rose gradient, every metric its own hue, areas as colour-coded tiles. */
 :root{
@@ -307,9 +307,11 @@ input[type=search]:not(:placeholder-shown){background:#fff4c2;border:2px solid #
 #annc{position:fixed;inset:0;z-index:999;display:none;place-items:center;padding:24px;background:rgba(14,10,60,.82);backdrop-filter:blur(6px)}
 #annc .updbox{max-width:620px}
 #annc .annt{font-size:56px;font-weight:800;letter-spacing:-.02em;margin:0 0 14px;font-variant-numeric:tabular-nums}
+#annbar{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:998;background:#14163a;color:#fff;padding:10px 18px;border-radius:999px;font-weight:700;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.3)}
 #annc .ann2{font-size:16px;color:#6a6d94;margin-top:-14px}
 .annadm{margin:14px 0 4px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .annadm .mut{flex:1;min-width:220px}
+.bgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-top:12px}.bcol h3{font-size:16px;margin:0 0 8px}.brow{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line)}.brow.btot{border-bottom:0;border-top:2px solid var(--ink);margin-top:2px;font-weight:800}
 </style>
 </head>
 <body>
@@ -356,7 +358,7 @@ async function hashPw(pw, salt){
 }
 
 /* ---------- storage (shared db when available, local fallback) ---------- */
-const COLS_DB = ['users','entries','followups','payments','activity','edits','meta','chats'];
+const COLS_DB = ['users','entries','followups','payments','activity','edits','meta','chats','billing'];
 const D = {}; COLS_DB.forEach(c => D[c] = new Map());
 const loaded = {}; let loadFailed = false;
 function norm(snap){
@@ -591,6 +593,7 @@ function viewDashboard(){
       <div class="s">${wk.length} invoice${wk.length === 1 ? '' : 's'} with an Expected Date this week</div></div>
     <div class="card kpi" style="--c:#12a594"><div class="ic">${I.wallet}</div><div class="l">Collected this month</div><div class="v">${compact(collected)}</div><div class="s">payments recorded</div></div>
   </div>
+  ${billSummaryHTML()}
   <div class="grid g2" style="margin-top:14px">
     <div class="card"><h2>Aging of outstanding</h2><div class="cols">${cols}</div></div>
     <div class="card"><h2>Outstanding by area</h2>${bySub.length ? hbars(bySub, 'goSub') : '<div class="empty">No data</div>'}</div>
@@ -774,10 +777,10 @@ function viewCollection(){
   <div class="bar"><input id="cq" data-f="cq" type="search" placeholder="Search party, ref no, area" value="${esc(F.cq || '')}" style="min-width:260px" autocomplete="off"></div>
   <div class="tw"><table><thead><tr><th>Area</th><th>Date</th><th>Ref No</th><th>Party Name</th><th class="r">Amount</th><th>Due on</th><th>Received on</th><th>Status</th>${canStat() ? '<th></th>' : ''}</tr></thead><tbody>${body || `<tr><td colspan="9" class="empty">No paid invoices yet. Set an invoice's Status to Paid on the Outstanding page and it appears here.</td></tr>`}</tbody></table></div>${P.html}`;
 }
-const NAVIC = {"chat": "<path d=\"M21 12a8 8 0 0 1-11.7 7.1L4 20l1-4.6A8 8 0 1 1 21 12z\"/>", "collection": "<path d=\"M3 7a2 2 0 0 1 2-2h13v4\"/><path d=\"M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2z\"/><circle cx=\"16\" cy=\"14.5\" r=\"1.2\"/>", "dashboard": "<rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\" rx=\"2\"/>", "create": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 8v8M8 12h8\"/>", "outstanding": "<path d=\"M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z\"/><path d=\"M14 3v5h5M9 13h6M9 17h6\"/>", "parties": "<circle cx=\"9\" cy=\"8\" r=\"3.5\"/><path d=\"M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2 .8 3.5 2.7 3.5 6\"/>", "followups": "<path d=\"M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0\"/>", "edits": "<path d=\"M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z\"/>", "activity": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 7v5l3 2\"/>"};
+const NAVIC = {"billing": "<path d=\"M6 3h12v18l-3-2-3 2-3-2-3 2z\"/><path d=\"M9 8h6M9 12h6\"/>", "chat": "<path d=\"M21 12a8 8 0 0 1-11.7 7.1L4 20l1-4.6A8 8 0 1 1 21 12z\"/>", "collection": "<path d=\"M3 7a2 2 0 0 1 2-2h13v4\"/><path d=\"M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2z\"/><circle cx=\"16\" cy=\"14.5\" r=\"1.2\"/>", "dashboard": "<rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"2\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\" rx=\"2\"/>", "create": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 8v8M8 12h8\"/>", "outstanding": "<path d=\"M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z\"/><path d=\"M14 3v5h5M9 13h6M9 17h6\"/>", "parties": "<circle cx=\"9\" cy=\"8\" r=\"3.5\"/><path d=\"M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2 .8 3.5 2.7 3.5 6\"/>", "followups": "<path d=\"M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0\"/>", "edits": "<path d=\"M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z\"/>", "activity": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 7v5l3 2\"/>"};
 const ico = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${NAVIC[k] || ''}</svg>`;
 const NAV = [
-  ['dashboard','Dashboard',viewDashboard,()=>true],['create','Create',viewCreate,isAdm],['outstanding','Outstanding',viewOutstanding,()=>true],['collection','Collection',viewCollection,()=>true],['chat','Chat',viewChat,()=>true],
+  ['dashboard','Dashboard',viewDashboard,()=>true],['create','Create',viewCreate,isAdm],['outstanding','Outstanding',viewOutstanding,()=>true],['billing','Billing',viewBilling,()=>true],['collection','Collection',viewCollection,()=>true],['chat','Chat',viewChat,()=>true],
   ['edits','Edit History',viewEdits,()=>true],
   ['activity','Activity log',viewActivity,()=>true]
 ];
@@ -1038,6 +1041,104 @@ function profileModal(first){
   openModal(`<h2>Change password</h2>${first === true ? '<p class="sub">Please set your own password before you continue.</p>' : ''}<form data-form="pw"><div class="frow"><label class="f">New password (6+ characters)<input id="pw1" type="password" autocomplete="new-password" minlength="6" required></label></div><div class="err" id="perr2"></div><div class="acts"><button type="button" class="btn" data-act="closeModal">Cancel</button><button class="btn pri">Update</button></div></form>`);
 }
 
+
+/* ---------- billing ---------- */
+const FULLMON = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const mr = n => '₹' + Math.round(n || 0).toLocaleString('en-IN');
+const inr2 = n => '₹' + (n || 0).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+const canBill = () => canInv();
+const billRows = () => { if (isTop()) return [...D.billing.values()]; const ok = new Set(mySubs()); return [...D.billing.values()].filter(b => ok.has(b.sub)); };
+const bval = b => (b.value || b.value === 0) ? b.value : (b.amount || 0);
+const fyStart = (() => { const [y, m] = TODAY.split('-').map(Number); return m >= 4 ? y : y - 1; })();
+const FYL = String(fyStart).slice(2) + '-' + String(fyStart + 1).slice(2);
+const MONL = FULLMON[+TODAY.split('-')[1] - 1] + ' ' + TODAY.slice(2, 4);
+function billSummaryHTML(){
+  const rows = billRows(), ym = TODAY.slice(0, 7), fs = fyStart + '-04-01';
+  const areas = isTop() ? allSubs() : mySubs();
+  const mAmt = {}, oAmt = {}; areas.forEach(a => { mAmt[a] = 0; oAmt[a] = 0; });
+  rows.forEach(b => { if (!b.date || !(b.sub in oAmt)) return; if (b.date >= fs && b.date <= TODAY) oAmt[b.sub] += bval(b); if (b.date.startsWith(ym)) mAmt[b.sub] += bval(b); });
+  const mt = areas.reduce((x, a) => x + mAmt[a], 0), ot = areas.reduce((x, a) => x + oAmt[a], 0);
+  if (!areas.length) return '';
+  const col = (title, map, tot) => `<div class="bcol"><h3>${esc(title)}</h3>${areas.map(a => `<div class="brow"><span>${esc(a)}</span><b class="num">${mr(map[a])}</b></div>`).join('')}<div class="brow btot"><span>Total</span><b class="num">${mr(tot)}</b></div></div>`;
+  return `<div class="card" style="margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Billing</h2><button class="btn sm" data-act="nav" data-k="billing">Open billing</button></div><div class="bgrid">${col(MONL, mAmt, mt)}${col('Overall ' + FYL, oAmt, ot)}</div></div>`;
+}
+function viewBilling(){
+  const q = (F.bq || '').trim().toLowerCase();
+  let rows = billRows().sort((a, b) => (b.date || '') < (a.date || '') ? -1 : (b.date || '') > (a.date || '') ? 1 : 0);
+  if (q) rows = rows.filter(b => ((b.party || '') + ' ' + (b.sub || '') + ' ' + (b.inv || '') + ' ' + (b.vtype || '')).toLowerCase().includes(q));
+  const P = pg(rows, 'bil', 15), tAmt = sum(rows, b => b.amount || 0), tVal = sum(rows, bval);
+  const body = P.items.map(b => `<tr><td>${fmtD(b.date)}</td><td class="wrap">${esc(b.party)}</td><td>${esc(b.sub)}</td><td>${esc(b.vtype || '—')}</td><td>${b.inv ? `<span class="mono">${esc(b.inv)}</span>` : '<span class="mut">—</span>'}</td><td class="r"><span class="num">${inr2(b.amount)}</span></td><td class="r"><span class="num">${inr2(bval(b))}</span></td>${isAdm() ? `<td><button class="btn sm dng" data-act="delBill" data-id="${b.id}" aria-label="Delete billing row">Delete</button></td>` : ''}</tr>`).join('');
+  return `<div class="head"><div><h1>Billing</h1><p class="sub">Customer billing details · ${rows.length} row${rows.length === 1 ? '' : 's'}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${canBill() ? '<button class="btn pri" data-act="addBill">+ Add billing</button><label class="btn" for="bfile" style="cursor:pointer">Import Excel</label><input id="bfile" type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:1px;height:1px">' : ''}<button class="btn" data-act="billSample">Sample Excel</button><button class="btn" data-act="billExport">Export Excel</button></div></div>
+  <div class="bar"><input id="bq" data-f="bq" type="search" placeholder="Search customer, invoice no, area, voucher type" value="${esc(F.bq || '')}" style="min-width:300px" autocomplete="off"><span id="bmsg" class="mut"></span></div>
+  <div class="tw"><table><thead><tr><th>Date</th><th>Customer Name</th><th>Area</th><th>Voucher Type</th><th>Invoice No</th><th class="r">Basic Amount</th><th class="r">Basic Value</th>${isAdm() ? '<th></th>' : ''}</tr></thead><tbody>${body || `<tr><td colspan="8" class="empty">No billing yet.${canBill() ? ' Use Add billing or Import Excel.' : ''}</td></tr>`}</tbody>${rows.length ? `<tfoot><tr><td colspan="5"><b>Total</b></td><td class="r"><b class="num">${inr2(tAmt)}</b></td><td class="r"><b class="num">${inr2(tVal)}</b></td>${isAdm() ? '<td></td>' : ''}</tr></tfoot>` : ''}</table></div>${P.html}`;
+}
+function billModal(){
+  const areas = isTop() ? allSubs() : mySubs(), parties = [...new Set([...D.billing.values()].map(b => b.party).concat([...D.entries.values()].map(e => e.party)))].sort(), vts = [...new Set(['Sales', 'Credit Note', 'Debit Note'].concat([...D.billing.values()].map(b => b.vtype).filter(Boolean)))];
+  openModal(`<h2>Add billing</h2><form data-form="bill">
+  <div class="frow"><label class="f">Date<input id="bd" type="date" value="${TODAY}" required></label><label class="f">Area<select id="bs">${areas.map(s => `<option>${esc(s)}</option>`).join('')}</select></label></div>
+  <div class="frow"><label class="f">Customer Name<input id="bp" list="bplist" required></label><datalist id="bplist">${parties.map(p => `<option value="${esc(p)}">`).join('')}</datalist></div>
+  <div class="frow"><label class="f">Voucher Type<input id="bv" list="bvlist" value="Sales"></label><datalist id="bvlist">${vts.map(p => `<option value="${esc(p)}">`).join('')}</datalist><label class="f">Invoice No<input id="bi"></label></div>
+  <div class="frow"><label class="f">Basic Amount<input id="ba" type="number" step="0.01" required></label><label class="f">Basic Value<input id="bx" type="number" step="0.01" placeholder="Same as amount if empty"></label></div>
+  <div class="err" id="berr"></div><div class="acts"><button type="button" class="btn" data-act="closeModal">Cancel</button><button class="btn pri">Add billing</button></div></form>`);
+}
+async function submitBill(){
+  if (!canBill()) return;
+  const party = val('bp'), amt = val('ba'), date = val('bd'), sub = val('bs');
+  if (!party || amt === '' || !date || !sub){ $('#berr').textContent = 'Date, customer, area and basic amount are required.'; return; }
+  const a = round2(+amt), v = val('bx') === '' ? a : round2(+val('bx'));
+  await Store.set('billing', uid('b'), {date, party, sub, vtype:val('bv'), inv:val('bi'), amount:a, value:v, by:S.me});
+  await logAct('Billing', `${party} ${val('bi')} ${inr2(v)} (${sub})`);
+  closeModal(); forceRender = true; render();
+}
+const bkey = b => [(b.inv || '').toLowerCase(), (b.vtype || '').toLowerCase(), (b.party || '').toLowerCase(), b.inv ? '' : (b.date || '') + '|' + b.amount].join('|');
+async function parseBilling(file){
+  const wb = XLSX.read(await file.arrayBuffer(), {type:'array', cellDates:false}); const out = [];
+  for (const name of wb.SheetNames){
+    const aoa = XLSX.utils.sheet_to_json(wb.Sheets[name], {header:1, raw:true, defval:null});
+    const hi = aoa.findIndex(r => r && r.some(c => /^(customer name|party name)$/i.test(String(c ?? '').trim())));
+    if (hi < 0) continue;
+    const hd = aoa[hi].map(c => String(c ?? '').trim().toLowerCase()), ix = (...ks) => hd.findIndex(h => ks.includes(h));
+    const c = {d:ix('date'), p:ix('customer name', 'party name'), s:ix('area'), v:ix('voucher type'), i:ix('invoice no', 'invoice number', 'ref no'), a:ix('basic amount', 'amount'), x:ix('basic value')};
+    const num = v => { if (typeof v === 'number') return v; const n = parseFloat(String(v ?? '').replace(/[₹,\s]/g, '')); return isFinite(n) ? n : null; };
+    for (const r of aoa.slice(hi + 1)){
+      const party = String(r[c.p] ?? '').trim(), amt = num(r[c.a]), val2 = c.x >= 0 ? num(r[c.x]) : null;
+      if (!party || (amt == null && val2 == null)) continue;
+      const a = round2(amt ?? val2);
+      out.push({date:parseDate(r[c.d]), party, sub:String(r[c.s] ?? '').trim() || name, vtype:String(r[c.v] ?? '').trim(), inv:String(r[c.i] ?? '').trim(), amount:a, value:round2(val2 ?? a)});
+    }
+  }
+  return out;
+}
+let billImp = null;
+function billImportModal(rows){
+  const known = new Set(allSubs()); let skipped = 0; const ok = [];
+  rows.forEach(r => { if (!known.has(r.sub) && !isAdm()){ skipped++; return; } ok.push(r); });
+  const ex = new Map([...D.billing.values()].map(b => [bkey(b), b])), add = [], upd = [];
+  ok.forEach(r => { const o = ex.get(bkey(r)); if (!o) add.push(r); else if (o.amount !== r.amount || o.value !== r.value || o.date !== r.date || o.sub !== r.sub) upd.push({o, r}); });
+  billImp = {add, upd};
+  openModal(`<h2>Import billing</h2><p><b>${rows.length}</b> rows read from the file.</p><p style="margin:8px 0"><b>${add.length}</b> new · <b>${upd.length}</b> updated · <b>${ok.length - add.length - upd.length}</b> unchanged${skipped ? ' · <b>' + skipped + '</b> skipped (area not found)' : ''}</p><div id="bimsg" class="mut"></div><div class="acts"><button class="btn" data-act="closeModal">Cancel</button><button class="btn pri" data-act="applyBill" ${add.length + upd.length ? '' : 'disabled'}>Apply import</button></div>`);
+}
+async function applyBill(){
+  const p = billImp; if (!p || !canBill()) return; const msg = $('#bimsg'), tasks = [];
+  p.add.forEach(r => tasks.push(() => Store.set('billing', uid('b'), {...r, by:S.me})));
+  p.upd.forEach(({o, r}) => tasks.push(() => Store.set('billing', o.id, {...o, ...r})));
+  if (isAdm()){ const subs = new Set(allSubs()); [...p.add, ...p.upd.map(x => x.r)].forEach(r => subs.add(r.sub)); tasks.push(() => Store.set('meta', 'settings', {subgroups:[...subs]})); }
+  await pool(tasks, 4, (d, n) => { if (msg) msg.textContent = `Saving ${d} of ${n}…`; });
+  await logAct('Billing import', `${p.add.length} new, ${p.upd.length} updated`);
+  billImp = null; closeModal(); forceRender = true; render();
+}
+const BILL_HEAD = ['Date','Customer Name','Area','Voucher Type','Invoice No','Basic Amount','Basic Value'];
+async function billSample(){
+  const subs = allSubs(), s1 = subs[0] || 'City 1', s2 = subs[1] || s1;
+  const d = n => { const x = new Date(); x.setDate(x.getDate() - n); return new Date(Date.UTC(x.getFullYear(), x.getMonth(), x.getDate())); };
+  const rows = [[d(10), 'ABC Motors Pvt Ltd', s1, 'Sales', 'INV/001/26-27', 100000, 100000], [d(6), 'Sri Lakshmi Traders', s1, 'Sales', 'INV/014/26-27', 48250.5, 48250.5], [d(3), 'Kumar Auto Components', s2, 'Credit Note', 'CN/003/26-27', 5000, 5000]];
+  const ws = XLSX.utils.aoa_to_sheet([BILL_HEAD, ...rows], {cellDates:true}); ws['!cols'] = [14, 34, 18, 16, 18, 16, 16].map(w => ({wch:w}));
+  rows.forEach((r, i) => { const c = ws['A' + (i + 2)]; if (c) c.z = 'dd-mm-yyyy'; });
+  const info = XLSX.utils.aoa_to_sheet([['How to use this file'], ['1. One row per bill on the Billing sheet. Keep the column headings as they are.'], ['2. Area must match an Area name in the app.'], ['3. Date: dd-mm-yyyy. Basic Amount and Basic Value: numbers only. If Basic Value is empty it is taken as the Basic Amount.'], ['4. In the app choose Billing > Import Excel. Rows with the same Invoice No, Voucher Type and Customer update the old row.']]); info['!cols'] = [{wch:100}];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Billing'); XLSX.utils.book_append_sheet(wb, info, 'How to use');
+  await saveBook(wb, 'Billing_Import_Sample.xlsx', $('#bmsg'));
+}
+
 /* ---------- import / export ---------- */
 async function parseWorkbook(file){
   const wb = XLSX.read(await file.arrayBuffer(), {type:'array'}); const out = [], skipped = [];
@@ -1168,6 +1269,12 @@ async function exportX(){
 /* ---------- events ---------- */
 const ACT = {
   nav:t => { S.editRow = null; S.view = t.dataset.k; if (t.dataset.role){ F.cr = t.dataset.role; createMsg = ''; S.createOpen = true; } closeDrawer(); forceRender = true; render(); },
+  addBill:() => { if (canBill()) billModal(); },
+  applyBill:() => applyBill(),
+  billSample:() => billSample(),
+  billExport:() => { const rows = billRows().sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1); return exportSheet('Billing', 'Billing', BILL_HEAD, rows.map(b => [xd(b.date), b.party, b.sub, b.vtype || '', b.inv || '', b.amount || 0, bval(b)]), [14, 34, 18, 16, 18, 16, 16]); },
+  delBill:async t => { const b = D.billing.get(t.dataset.id); if (!b || !isAdm()) return; if (!confirmDel(t, 'Delete billing row?')) return; await Store.del('billing', b.id); await logAct('Billing delete', `${b.party} ${b.inv || ''}`); },
+  annOk:() => { try { document.activeElement?.blur(); document.querySelectorAll('[data-chg]').forEach(el => el.dispatchEvent(new Event('change', {bubbles:true}))); } catch(e){} const st = annState(); if (st){ try { sessionStorage.setItem('ann_ack', String(st.a.at)); } catch(e){} } annTick(); },
   annStart:async () => { if (!isAdm()) return; await Store.set('meta', 'announce', {active:true, at:Date.now(), by:S.me}); annTick(); },
   annClose:async () => { if (!isAdm()) return; await Store.set('meta', 'announce', {active:false, at:0, by:S.me}); forceRender = true; render(); annTick(); },
   toggleSide:() => { S.sideHidden = !S.sideHidden; try { localStorage.setItem('cof_side', S.sideHidden ? '1' : '0'); } catch(e){} forceRender = true; render(); },
@@ -1255,6 +1362,7 @@ document.addEventListener('change', async ev => {
   else if (t.dataset.chg === 'expdate'){ const e = D.entries.get(t.dataset.id); if (e && !isTop() && expLock(e).open && (e.expectedDate || '') !== t.value && (!t.value || t.value >= TODAY)){ const o = {...e, expectedDate:t.value}; if (!t.value){ o.expSetAt = ''; o.expSetBy = ''; } else if (!e.expSetAt || !e.expectedDate){ o.expSetAt = nowISO(); o.expSetBy = S.me; } await Store.set('entries', e.id, o); await logEdit('Edit', e, [{f:'Expected Payment Date', from:showV('expectedDate', e.expectedDate), to:showV('expectedDate', t.value)}]); } else { forceRender = true; render(); } }
   else if (t.dataset.chg === 'assign'){ const e = D.entries.get(t.dataset.id); await Store.set('entries', e.id, {...e, assignedTo:t.value}); await logEdit('Edit', e, [{f:'Assigned To', from:uname(e.assignedTo) || '—', to:uname(t.value) || '—'}]); await logAct('Assign', `${e.party} ${e.ref || ''} → ${uname(t.value) || 'Unassigned'}`); }
   else if (t.id === 'chimg' && t.files[0]){ try { S.chatImg = await compressImg(t.files[0]); } catch(e){ S.chatImg = null; } t.value = ''; chatPrev(); }
+  else if (t.id === 'bfile' && t.files[0]){ const bm = $('#bmsg'); if (bm) bm.textContent = 'Reading…'; try { const rows = await parseBilling(t.files[0]); t.value = ''; if (bm) bm.textContent = ''; if (!rows.length){ if (bm) bm.textContent = 'No billing rows found. Use the sample format.'; return; } billImportModal(rows); } catch(e){ if (bm) bm.textContent = 'Could not read this file.'; } }
   else if (t.id === 'mfile' && t.files[0]){
     const box = $('#mprev'); box.innerHTML = '<span class="mut">Reading…</span>';
     try {
@@ -1286,6 +1394,7 @@ document.addEventListener('submit', async ev => {
     if (!u || u.active === false || await hashPw(val('lp') === '' ? '' : document.getElementById('lp').value, u.salt) !== u.hash){ loginErr = 'Wrong username or password.'; $('#lerr').textContent = loginErr; return; }
     loginErr = ''; S.me = u.id; try { sessionStorage.setItem('cof_me', u.id); } catch(e){} S.view = 'dashboard'; render(); if (u.mustChange && u.role === 'Admin') profileModal(true);
   } else if (k === 'entry') await submitEntry(f);
+  else if (k === 'bill') await submitBill();
   else if (k === 'user') await submitUser(f);
   else if (k === 'area') await submitArea();
   else if (k === 'pname'){ const n = val('pfn'); if (!n){ $('#pferr').textContent = 'Name cannot be empty.'; return; } if (n !== me().name){ await Store.set('users', S.me, {...me(), name:n}); await logAct('Edit profile', 'Name changed to ' + n); } closeModal(); }
@@ -1349,18 +1458,29 @@ function annAdminRaw(){
   const msg = st.phase === 'warn' ? `Announcement is live. Update starts in <b>${mmss(ANN_WARN - st.t)}</b>.` : st.phase === 'work' ? `Users are locked out. Auto-opens in <b>${mmss(ANN_END - st.t)}</b>.` : 'The announcement timed out. Users can use the app again.';
   return `<div class="annadm" id="annadm"><div class="mut"><b>Update announcement</b><br>${msg}</div><button class="btn pri" data-act="annClose">${st.phase === 'done' ? 'Clear announcement' : 'OK, update finished — close announcement'}</button></div>`;
 }
+const annAcked = st => { try { return sessionStorage.getItem('ann_ack') === String(st.a.at); } catch(e){ return false; } };
 function annTick(){
   const box = document.getElementById('annc'); if (!box) return;
   const adm = document.getElementById('annadm'); if (adm){ const h = annAdminRaw(); if (h !== annLast){ annLast = h; adm.outerHTML = h; } }
   const st = annState();
-  if (!me() || isAdm() || !st || st.phase === 'done'){ if (box.style.display !== 'none'){ box.style.display = 'none'; box.innerHTML = ''; } return; }
+  let bar = document.getElementById('annbar');
+  const hideBox = () => { if (box.style.display !== 'none'){ box.style.display = 'none'; box.innerHTML = ''; box.dataset.k = ''; } };
+  if (!me() || isAdm() || !st || st.phase === 'done'){ hideBox(); if (bar) bar.remove(); return; }
   const warn = st.phase === 'warn', left = mmss((warn ? ANN_WARN : ANN_END) - st.t);
+  if (warn && annAcked(st)){
+    hideBox();
+    if (!bar){ bar = document.createElement('div'); bar.id = 'annbar'; bar.setAttribute('role', 'status'); document.body.appendChild(bar); }
+    bar.textContent = 'Update starts in ' + left + ' — please do not start anything new.'; return;
+  }
+  if (bar) bar.remove();
   const html = `<div class="updbox"><div class="updic" aria-hidden="true"><svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div>
     <h2>${warn ? 'Update starts in 1 minute' : 'Update in progress'}</h2>
     <div class="annt">${left}</div>
-    <p>${warn ? 'We are going to update the app in 1 minute. For the next 5 minutes, please do not submit any request or fill in any details.' : 'Please do not submit any request or fill in any details. You can use the app again when the timer ends or when the admin confirms the update is done.'}</p>
-    <p class="ann2">${warn ? '1 நிமிடத்தில் அப்டேட் தொடங்குகிறது. அடுத்த 5 நிமிடங்களுக்கு எந்த ரிக்வெஸ்ட்டும் கொடுக்காதீர்கள், எந்த விவரத்தையும் நிரப்பாதீர்கள்.' : 'அப்டேட் நடைபெறுகிறது. எதையும் நிரப்ப வேண்டாம். நேரம் முடிந்ததும் மீண்டும் பயன்படுத்தலாம்.'}</p></div>`;
-  if (box.dataset.k !== (warn ? 'w' : 'k') || box.style.display === 'none'){ box.dataset.k = warn ? 'w' : 'k'; box.innerHTML = html; box.style.display = 'grid'; }
+    <p>${warn ? 'We are going to update the app in 1 minute. For the next 5 minutes, please do not submit any request or fill in any details. Press OK and we will save what you have typed.' : 'Please do not submit any request or fill in any details. You can use the app again when the timer ends or when the admin confirms the update is done.'}</p>
+    <p class="ann2">${warn ? '1 நிமிடத்தில் அப்டேட் தொடங்குகிறது. அடுத்த 5 நிமிடங்களுக்கு எந்த ரிக்வெஸ்ட்டும் கொடுக்காதீர்கள், எந்த விவரத்தையும் நிரப்பாதீர்கள். OK அழுத்தினால் நீங்கள் டைப் செய்தது சேமிக்கப்படும்.' : 'அப்டேட் நடைபெறுகிறது. எதையும் நிரப்ப வேண்டாம். நேரம் முடிந்ததும் மீண்டும் பயன்படுத்தலாம்.'}</p>
+    ${warn ? '<button class="updok" data-act="annOk" id="annok">OK</button>' : ''}</div>`;
+  const k = warn ? 'w' : 'k';
+  if (box.dataset.k !== k || box.style.display === 'none'){ box.dataset.k = k; box.innerHTML = html; box.style.display = 'grid'; const ok = document.getElementById('annok'); if (ok) ok.focus(); }
   else { const t = box.querySelector('.annt'); if (t) t.textContent = left; }
 }
 setInterval(annTick, 1000);
