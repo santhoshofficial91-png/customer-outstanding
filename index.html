@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<meta name="app-build" content="20261116054127">
+<meta name="app-build" content="20261116074019">
 <style>
 /* Direction: midnight-indigo ledger. Hero total in a violet-to-rose gradient, every metric its own hue, areas as colour-coded tiles. */
 :root{
@@ -303,6 +303,13 @@ input[type=search]:not(:placeholder-shown){background:#fff4c2;border:2px solid #
 .updok{height:60px;padding:0 38px;border:0;border-radius:16px;font:inherit;font-weight:800;font-size:19px;color:#fff;cursor:pointer;background:linear-gradient(135deg,#5b3fe0,#8a3ffc 60%,#e11d74);box-shadow:0 12px 24px rgba(91,63,224,.35)}
 .updok:focus-visible{outline:3px solid #14163a;outline-offset:3px}
 .cexp{padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.06);color:var(--mut,#667);font-size:12px;font-style:italic}
+
+#annc{position:fixed;inset:0;z-index:999;display:none;place-items:center;padding:24px;background:rgba(14,10,60,.82);backdrop-filter:blur(6px)}
+#annc .updbox{max-width:620px}
+#annc .annt{font-size:56px;font-weight:800;letter-spacing:-.02em;margin:0 0 14px;font-variant-numeric:tabular-nums}
+#annc .ann2{font-size:16px;color:#6a6d94;margin-top:-14px}
+.annadm{margin:14px 0 4px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.annadm .mut{flex:1;min-width:220px}
 </style>
 </head>
 <body>
@@ -310,6 +317,7 @@ input[type=search]:not(:placeholder-shown){background:#fff4c2;border:2px solid #
 <div id="dr" class="dr" aria-label="Invoice details"></div>
 <div id="ov" class="ov"></div>
 <div id="tip"></div>
+<div id="annc" role="alertdialog" aria-modal="true" aria-live="assertive" aria-label="Update announcement"></div>
 <script>
 const SEED = null;
 const SB = {"url": "https://ogvltuavclcgbxlyxkhs.supabase.co", "key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ndmx0dWF2Y2xjZ2J4bHl4a2hzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ3MjY4MDAsImV4cCI6MjExMDMwMjgwMH0.M8toXkbQui8TjCacIobkiyew9O-6IrqgZTTzIkQV8Sg"};
@@ -571,7 +579,7 @@ function viewDashboard(){
   const ms = isTop() ? scoped().filter(missed).sort((a, b) => a.expectedDate < b.expectedDate ? -1 : 1) : [];
   const MP = pg(ms, 'miss', 5);
   const missCard = ms.length ? `<div class="card mcard" role="alert"><h2>Expected date missed · ${ms.length} invoice${ms.length > 1 ? 's' : ''}</h2><p class="mut" style="margin:0 0 8px">Payment was promised by a date that has passed and the invoice is not Paid.</p><div class="tw"><table><thead><tr><th>Area</th><th>Party Name</th><th>Ref No</th><th class="r">Pending Amount</th><th>Expected Date</th><th>Late by</th><th></th></tr></thead><tbody>${MP.items.map(e => `<tr><td>${esc(e.sub)}</td><td class="wrap">${esc(e.party)}</td><td><span class="mono">${esc(e.ref || '—')}</span></td><td class="r"><span class="num">${money(e.amount)}</span></td><td>${fmtD(e.expectedDate)}</td><td><span class="pill bad">${dn(TODAY) - dn(e.expectedDate)} d</span></td><td><button class="btn sm" data-act="goSub" data-k="${esc(e.sub)}">Open area</button></td></tr>`).join('')}</tbody></table></div>${MP.html}</div>` : '';
-  return `<div class="head"><div><h1>Dashboard</h1><p class="sub">${isTop() ? 'All areas' : isMgrUp() ? 'Your areas' : 'Your invoices'} · as of ${fmtD(TODAY)}</p></div></div>
+  return `<div class="head"><div><h1>Dashboard</h1><p class="sub">${isTop() ? 'All areas' : isMgrUp() ? 'Your areas' : 'Your invoices'} · as of ${fmtD(TODAY)}</p></div></div>${annAdminHTML()}
   ${missCard}
   <div class="grid kp4">
     <div class="hero"><div><div class="hk">Total outstanding${!isTop() && mySubs().length ? `<span class="har">${esc(mySubs().join(' / '))}</span>` : ''}</div><div class="hv">${compact(total)}</div><div class="hs">${rows.length} invoices · ${parties} parties</div></div>
@@ -1160,6 +1168,8 @@ async function exportX(){
 /* ---------- events ---------- */
 const ACT = {
   nav:t => { S.editRow = null; S.view = t.dataset.k; if (t.dataset.role){ F.cr = t.dataset.role; createMsg = ''; S.createOpen = true; } closeDrawer(); forceRender = true; render(); },
+  annStart:async () => { if (!isAdm()) return; await Store.set('meta', 'announce', {active:true, at:Date.now(), by:S.me}); annTick(); },
+  annClose:async () => { if (!isAdm()) return; await Store.set('meta', 'announce', {active:false, at:0, by:S.me}); forceRender = true; render(); annTick(); },
   toggleSide:() => { S.sideHidden = !S.sideHidden; try { localStorage.setItem('cof_side', S.sideHidden ? '1' : '0'); } catch(e){} forceRender = true; render(); },
   toggleAreas:() => { S.hideAreas = !S.hideAreas; try { localStorage.setItem('cof_areas', S.hideAreas ? '1' : '0'); } catch(e){} render(); },
   toggleCreate:() => { S.createOpen = !S.createOpen; forceRender = true; render(); },
@@ -1325,6 +1335,35 @@ document.addEventListener('mouseout', ev => { if (ev.target.closest('[data-tip]'
   setInterval(chk, 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) chk(); });
 })();
+
+/* ---------- admin update announcement ---------- */
+let annLast = '';
+const ANN_WARN = 60e3, ANN_END = 360e3;
+const annState = () => { const a = D.meta.get('announce'); if (!a || !a.active || !a.at) return null; const t = Date.now() - a.at; if (t >= ANN_END) return {a, t, phase:'done'}; return {a, t, phase: t < ANN_WARN ? 'warn' : 'work'}; };
+const mmss = ms => { const x = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(x / 60) + ':' + String(x % 60).padStart(2, '0'); };
+const annAdminHTML = () => { const h = annAdminRaw(); annLast = h; return h; };
+function annAdminRaw(){
+  if (!isAdm()) return '';
+  const st = annState();
+  if (!st) return `<div class="annadm" id="annadm"><div class="mut"><b>Update announcement</b><br>Warns every user that an update starts in 1 minute and asks them not to enter anything for 5 minutes.</div><button class="btn pri" data-act="annStart">Announce update (1 min warning)</button></div>`;
+  const msg = st.phase === 'warn' ? `Announcement is live. Update starts in <b>${mmss(ANN_WARN - st.t)}</b>.` : st.phase === 'work' ? `Users are locked out. Auto-opens in <b>${mmss(ANN_END - st.t)}</b>.` : 'The announcement timed out. Users can use the app again.';
+  return `<div class="annadm" id="annadm"><div class="mut"><b>Update announcement</b><br>${msg}</div><button class="btn pri" data-act="annClose">${st.phase === 'done' ? 'Clear announcement' : 'OK, update finished — close announcement'}</button></div>`;
+}
+function annTick(){
+  const box = document.getElementById('annc'); if (!box) return;
+  const adm = document.getElementById('annadm'); if (adm){ const h = annAdminRaw(); if (h !== annLast){ annLast = h; adm.outerHTML = h; } }
+  const st = annState();
+  if (!me() || isAdm() || !st || st.phase === 'done'){ if (box.style.display !== 'none'){ box.style.display = 'none'; box.innerHTML = ''; } return; }
+  const warn = st.phase === 'warn', left = mmss((warn ? ANN_WARN : ANN_END) - st.t);
+  const html = `<div class="updbox"><div class="updic" aria-hidden="true"><svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div>
+    <h2>${warn ? 'Update starts in 1 minute' : 'Update in progress'}</h2>
+    <div class="annt">${left}</div>
+    <p>${warn ? 'We are going to update the app in 1 minute. For the next 5 minutes, please do not submit any request or fill in any details.' : 'Please do not submit any request or fill in any details. You can use the app again when the timer ends or when the admin confirms the update is done.'}</p>
+    <p class="ann2">${warn ? '1 நிமிடத்தில் அப்டேட் தொடங்குகிறது. அடுத்த 5 நிமிடங்களுக்கு எந்த ரிக்வெஸ்ட்டும் கொடுக்காதீர்கள், எந்த விவரத்தையும் நிரப்பாதீர்கள்.' : 'அப்டேட் நடைபெறுகிறது. எதையும் நிரப்ப வேண்டாம். நேரம் முடிந்ததும் மீண்டும் பயன்படுத்தலாம்.'}</p></div>`;
+  if (box.dataset.k !== (warn ? 'w' : 'k') || box.style.display === 'none'){ box.dataset.k = warn ? 'w' : 'k'; box.innerHTML = html; box.style.display = 'grid'; }
+  else { const t = box.querySelector('.annt'); if (t) t.textContent = left; }
+}
+setInterval(annTick, 1000);
 render(); Store.init();
 </script>
 </body>
