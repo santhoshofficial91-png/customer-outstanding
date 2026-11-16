@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<meta name="app-build" content="20261115141905">
+<meta name="app-build" content="20261116054127">
 <style>
 /* Direction: midnight-indigo ledger. Hero total in a violet-to-rose gradient, every metric its own hue, areas as colour-coded tiles. */
 :root{
@@ -458,6 +458,7 @@ function issuesOf(e){
 const me = () => D.users.get(S.me);
 const role = () => me()?.role;
 const isAdm = () => role() === 'Admin';
+const canInv = () => isAdm() || (role() === 'Sub Admin' && !!me()?.canStatus);
 const isTop = () => role() === 'Admin' || role() === 'Sub Admin';
 const isMgrUp = () => role() !== 'Executive';
 const uname = id => D.users.get(id)?.name || '';
@@ -509,7 +510,7 @@ const COLS = {
   rem:{h:'Remark', s:e=>(e.remark||'').toLowerCase(), c:e => e.status === 'Paid' ? (e.remark ? esc(e.remark) : '<span class="mut">—</span>') : `<input class="rmk" maxlength="200" value="${esc(e.remark || '')}" placeholder="Add remark" data-chg="remark" data-id="${e.id}" aria-label="Remark for ${esc(e.party)}">`},
   fu:{h:'', s:()=>'', c:e => `<button class="btn fub" data-act="open" data-id="${e.id}" aria-label="Follow-up for ${esc(e.party)}">Follow-up</button>`},
   del:{h:'', s:()=>'', c:e => isAdm() ? `<button class="btn sm dng" data-act="delEntry" data-id="${e.id}" aria-label="Delete invoice">Delete</button>` : ''},
-  act:{h:'', s:()=>'', c:e => (!isTop() && e.dueLocked) ? '' : S.editRow === e.id ? `<button class="btn sm sv" data-act="saveRow" data-id="${e.id}">Save</button> <button class="btn sm" data-act="cancelRow" aria-label="Cancel edit">✕</button>` : `<button class="btn sm" data-act="editRow" data-id="${e.id}" ${isTop() ? '' : 'title="You can change the Due on date only once"'}>Edit</button>`},
+  act:{h:'', s:()=>'', c:e => ((role() === 'Sub Admin' && !canInv()) || (!isTop() && e.dueLocked)) ? '' : S.editRow === e.id ? `<button class="btn sm sv" data-act="saveRow" data-id="${e.id}">Save</button> <button class="btn sm" data-act="cancelRow" aria-label="Cancel edit">✕</button>` : `<button class="btn sm" data-act="editRow" data-id="${e.id}" ${isTop() ? '' : 'title="You can change the Due on date only once"'}>Edit</button>`},
   remark:{h:'Last Remark', s:e=>e.lastRemark||'', c:e=>e.lastRemark ? `<span class="mut">${esc(e.lastRemark.slice(0,70))}${e.lastRemark.length > 70 ? '…' : ''}</span>` : ''}
 };
 const pg = (list, key, PG = 10) => { const pages = Math.max(1, Math.ceil(list.length / PG)); const cur = Math.min(Math.max(1, F.pgs[key] || 1), pages); return {items:list.slice((cur - 1) * PG, cur * PG), html:pager(cur, pages, list.length, PG, key)}; };
@@ -615,7 +616,7 @@ function viewOutstanding(){
   const ex = isMgrUp() ? `<select data-f="exec" aria-label="Assigned to"><option value="">All executives</option><option value="_none" ${F.exec === '_none' ? 'selected' : ''}>Unassigned</option>${execs().map(u => `<option value="${u.id}" ${F.exec === u.id ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select>` : '';
   const dq = scoped().filter(e => e.status !== 'Paid' && issuesOf(e).length).length;
   return `<div class="head"><div><h1>Outstanding</h1><p class="sub">All areas on one screen. Pick an area to filter the list.</p></div>
-    <div class="bar" style="margin:0">${XB('exportOut')}<button class="btn" data-act="toggleAreas" aria-expanded="${!S.hideAreas}">${S.hideAreas ? 'Show areas' : 'Hide areas'}</button>${isTop() ? '<button class="btn pri" data-act="addEntry">+ Add invoice</button>' : ''}</div></div>
+    <div class="bar" style="margin:0">${XB('exportOut')}<button class="btn" data-act="toggleAreas" aria-expanded="${!S.hideAreas}">${S.hideAreas ? 'Show areas' : 'Hide areas'}</button>${canInv() ? '<button class="btn pri" data-act="addEntry">+ Add invoice</button>' : ''}</div></div>
     ${isTop() && F.sub === 'All' && !F.c_sub && [...scoped()].some(missed) ? `<div class="note bad" style="margin-bottom:10px" role="alert">${scoped().filter(missed).length} invoice(s) missed their Expected Date. They are highlighted in red.</div>` : ''}
     ${S.hideAreas ? '' : `<div class="areas">${tabs}</div>`}
     <div class="bar sfb" role="search" aria-label="Search the table">${SF.map(([k, h]) => `<label class="sf"><span>${h}</span><input id="c_${k}" data-f="c_${k}" type="search" placeholder="Search" value="${esc(F['c_' + k] || '')}" autocomplete="off"></label>`).join('')}
@@ -684,7 +685,7 @@ const scopedCount = s => [...D.entries.values()].filter(e => e.sub === s && e.st
 function viewData(){
   return `<div class="head"><div><h1>Import &amp; Export</h1><p class="sub">Use your existing Excel format. One sheet per sub group with Sub Group, Date, Ref No, Party Name, Pending Amount, Due on.</p></div></div>
   <div class="grid g2">
-    ${isTop() ? `<div class="card"><h2>Import from Excel</h2><p class="sub" style="margin-bottom:10px">Upload the latest outstanding file. Existing invoices keep their follow-up history; the amount and dates are updated.</p>
+    ${canInv() ? `<div class="card"><h2>Import from Excel</h2><p class="sub" style="margin-bottom:10px">Upload the latest outstanding file. Existing invoices keep their follow-up history; the amount and dates are updated.</p>
       <input id="file" type="file" accept=".xlsx,.xls,.csv"><div id="impprev" style="margin-top:12px">${pendingImport ? importPreview() : ''}</div></div>` : ''}
     <div class="card"><h2>Export to Excel</h2><p class="sub" style="margin-bottom:10px">Downloads ${isTop() ? 'all' : 'your'} open invoices, one sheet per sub group, with follow-up columns added at the end.</p>
       <button class="btn pri" data-act="exportX">Export .xlsx</button> <span id="expmsg" class="mut"></span></div>
@@ -849,7 +850,7 @@ function drawerHead(e){
   <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;margin-top:10px"><span class="num" style="font-size:24px">${money(e.amount)}</span><span>due ${fmtD(e.due)}</span>${COLS.od.c(e)}${COLS.status.c(e)}</div>
   ${e.promiseDate && e.status === 'Promised' ? `<div class="note info" style="margin-top:8px">Promise: ${e.promiseAmt ? money(e.promiseAmt) + ' on ' : ''}${fmtD(e.promiseDate)}</div>` : ''}
   ${iss.length ? `<div class="note" style="margin-top:8px">Check this entry: ${esc(iss.join(', '))}.</div>` : ''}${asg}
-  ${isTop() ? `<div style="margin-top:10px;display:flex;gap:6px"><button class="btn sm" data-act="editEntry" data-id="${e.id}">Edit invoice</button>${isAdm() ? `<button class="btn sm dng" data-act="delEntry" data-id="${e.id}">Delete</button>` : ''}</div>` : ''}`;
+  ${canInv() ? `<div style="margin-top:10px;display:flex;gap:6px"><button class="btn sm" data-act="editEntry" data-id="${e.id}">Edit invoice</button>${isAdm() ? `<button class="btn sm dng" data-act="delEntry" data-id="${e.id}">Delete</button>` : ''}</div>` : ''}`;
 }
 function timeline(e){
   const eds = true ? [...D.edits.values()].filter(h => h.entryId === e.id && mine(h)).map(h => ({at:h.at, t:'edit', f:h})) : [];
@@ -1179,10 +1180,11 @@ const ACT = {
   chatSend:async () => { const box = $('#chtxt'); const text = (box?.value || '').trim(); if (!S.chatWith || (!text && !S.chatImg)) return; const o = {from:S.me, to:S.chatWith, text, at:nowISO()}; if (S.chatImg){ if (SB){ try { const blob = await (await fetch(S.chatImg)).blob(), path = S.me + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.jpg', up = await Store.sb.storage.from('chat-images').upload(path, blob, {contentType:'image/jpeg'}); if (up.error) throw up.error; o.img = Store.sb.storage.from('chat-images').getPublicUrl(path).data.publicUrl; } catch(e){ toast('Photo could not be sent: ' + (e.message || e)); return; } } else o.img = S.chatImg; } S.chatImg = null; box.value = ''; box.style.height = ''; chatPrev(); await Store.set('chats', uid('c'), o); updateChat(true); box.focus(); },
   openImg:t => { const m = D.chats.get(t.dataset.id); if (!m?.img) return; const d = document.createElement('div'); d.className = 'lb'; d.id = 'lb'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Photo'); d.innerHTML = `<button class="btn lbx" data-act="closeLb" aria-label="Close photo">✕</button><img src="${m.img}" alt="Photo">`; document.body.appendChild(d); },
   closeLb:() => document.getElementById('lb')?.remove(),
-  editRow:t => { const en = D.entries.get(t.dataset.id); if (!isTop() && en?.dueLocked) return; S.editRow = t.dataset.id; forceRender = true; render(); },
+  editRow:t => { const en = D.entries.get(t.dataset.id); if ((role() === 'Sub Admin' && !canInv()) || (!isTop() && en?.dueLocked)) return; S.editRow = t.dataset.id; forceRender = true; render(); },
   cancelRow:() => { S.editRow = null; forceRender = true; render(); },
   clearF:() => { SF.forEach(([k]) => F['c_' + k] = ''); F.aging = ''; F.exec = ''; F.issues = false; F.q = ''; F.page = 1; render(); },
   saveRow:async t => {
+    if (role() === 'Sub Admin' && !canInv()) return;
     const tr = t.closest('tr'), old = D.entries.get(t.dataset.id); if (!old || !tr) return;
     const g = k => tr.querySelector(`[data-ie="${k}"]`)?.value ?? '';
     if (!isTop()){
@@ -1200,7 +1202,7 @@ const ACT = {
     if (ch.length){ await Store.set('entries', old.id, o); await logEdit('Edit', o, ch); await logAct('Edit invoice', `${party} ${o.ref || ''}`); }
     render();
   },
-  addEntry:() => entryModal(null), editEntry:t => entryModal(D.entries.get(t.dataset.id)),
+  addEntry:() => { if (canInv()) entryModal(null); }, editEntry:t => { if (canInv()) entryModal(D.entries.get(t.dataset.id)); },
   delUser:async t => { const u = D.users.get(t.dataset.id); if (!u || !isAdm() || u.id === S.me) return; if (!confirmDel(t, 'Delete user?')) return;
     if (SB){ const {data, error} = await Store.sb.functions.invoke('manage-users', {body:{action:'delete', id:u.id}}); let msg = error ? error.message : (data && data.error); if (error && error.context && error.context.json){ try { msg = (await error.context.json()).error || msg; } catch(e){} } if (msg){ toast('Could not delete: ' + msg); return; } D.users.delete(u.id); delete SECRETS[u.id]; }
     else await Store.del('users', u.id);
