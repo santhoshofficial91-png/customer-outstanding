@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<meta name="app-build" content="20261116081824">
+<meta name="app-build" content="20261116084053">
 <style>
 /* Direction: midnight-indigo ledger. Hero total in a violet-to-rose gradient, every metric its own hue, areas as colour-coded tiles. */
 :root{
@@ -1048,7 +1048,7 @@ const mr = n => '₹' + Math.round(n || 0).toLocaleString('en-IN');
 const inr2 = n => '₹' + (n || 0).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
 const canBill = () => canInv();
 const billRows = () => { if (isTop()) return [...D.billing.values()]; const ok = new Set(mySubs()); return [...D.billing.values()].filter(b => ok.has(b.sub)); };
-const bval = b => (b.value || b.value === 0) ? b.value : (b.amount || 0);
+const bval = b => b.amount || 0;
 const fyStart = (() => { const [y, m] = TODAY.split('-').map(Number); return m >= 4 ? y : y - 1; })();
 const FYL = String(fyStart).slice(2) + '-' + String(fyStart + 1).slice(2);
 const MONL = FULLMON[+TODAY.split('-')[1] - 1] + ' ' + TODAY.slice(2, 4);
@@ -1066,11 +1066,11 @@ function viewBilling(){
   const q = (F.bq || '').trim().toLowerCase();
   let rows = billRows().sort((a, b) => (b.date || '') < (a.date || '') ? -1 : (b.date || '') > (a.date || '') ? 1 : 0);
   if (q) rows = rows.filter(b => ((b.party || '') + ' ' + (b.sub || '') + ' ' + (b.inv || '') + ' ' + (b.vtype || '')).toLowerCase().includes(q));
-  const P = pg(rows, 'bil', 15), tAmt = sum(rows, b => b.amount || 0), tVal = sum(rows, bval);
-  const body = P.items.map(b => `<tr><td>${fmtD(b.date)}</td><td class="wrap">${esc(b.party)}</td><td>${esc(b.sub)}</td><td>${esc(b.vtype || '—')}</td><td>${b.inv ? `<span class="mono">${esc(b.inv)}</span>` : '<span class="mut">—</span>'}</td><td class="r"><span class="num">${inr2(b.amount)}</span></td><td class="r"><span class="num">${inr2(bval(b))}</span></td>${isAdm() ? `<td><button class="btn sm dng" data-act="delBill" data-id="${b.id}" aria-label="Delete billing row">Delete</button></td>` : ''}</tr>`).join('');
+  const P = pg(rows, 'bil', 15), tAmt = sum(rows, b => b.amount || 0);
+  const body = P.items.map(b => `<tr><td>${fmtD(b.date)}</td><td class="wrap">${esc(b.party)}</td><td>${esc(b.sub)}</td><td>${esc(b.vtype || '—')}</td><td>${b.inv ? `<span class="mono">${esc(b.inv)}</span>` : '<span class="mut">—</span>'}</td><td class="r"><span class="num">${inr2(b.amount)}</span></td>${isAdm() ? `<td><button class="btn sm dng" data-act="delBill" data-id="${b.id}" aria-label="Delete billing row">Delete</button></td>` : ''}</tr>`).join('');
   return `<div class="head"><div><h1>Billing</h1><p class="sub">Customer billing details · ${rows.length} row${rows.length === 1 ? '' : 's'}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${canBill() ? '<button class="btn pri" data-act="addBill">+ Add billing</button><label class="btn" for="bfile" style="cursor:pointer">Import Excel</label><input id="bfile" type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:1px;height:1px">' : ''}<button class="btn" data-act="billSample">Sample Excel</button><button class="btn" data-act="billExport">Export Excel</button></div></div>
   <div class="bar"><input id="bq" data-f="bq" type="search" placeholder="Search customer, invoice no, area, voucher type" value="${esc(F.bq || '')}" style="min-width:300px" autocomplete="off"><span id="bmsg" class="mut"></span></div>
-  <div class="tw"><table><thead><tr><th>Date</th><th>Customer Name</th><th>Area</th><th>Voucher Type</th><th>Invoice No</th><th class="r">Basic Amount</th><th class="r">Basic Value</th>${isAdm() ? '<th></th>' : ''}</tr></thead><tbody>${body || `<tr><td colspan="8" class="empty">No billing yet.${canBill() ? ' Use Add billing or Import Excel.' : ''}</td></tr>`}</tbody>${rows.length ? `<tfoot><tr><td colspan="5"><b>Total</b></td><td class="r"><b class="num">${inr2(tAmt)}</b></td><td class="r"><b class="num">${inr2(tVal)}</b></td>${isAdm() ? '<td></td>' : ''}</tr></tfoot>` : ''}</table></div>${P.html}`;
+  <div class="tw"><table><thead><tr><th>Date</th><th>Customer Name</th><th>Area</th><th>Voucher Type</th><th>Invoice No</th><th class="r">Basic Amount</th>${isAdm() ? '<th></th>' : ''}</tr></thead><tbody>${body || `<tr><td colspan="7" class="empty">No billing yet.${canBill() ? ' Use Add billing or Import Excel.' : ''}</td></tr>`}</tbody>${rows.length ? `<tfoot><tr><td colspan="5"><b>Total</b></td><td class="r"><b class="num">${inr2(tAmt)}</b></td>${isAdm() ? '<td></td>' : ''}</tr></tfoot>` : ''}</table></div>${P.html}`;
 }
 function billModal(){
   const areas = isTop() ? allSubs() : mySubs(), parties = [...new Set([...D.billing.values()].map(b => b.party).concat([...D.entries.values()].map(e => e.party)))].sort(), vts = [...new Set(['Sales', 'Credit Note', 'Debit Note'].concat([...D.billing.values()].map(b => b.vtype).filter(Boolean)))];
@@ -1078,16 +1078,16 @@ function billModal(){
   <div class="frow"><label class="f">Date<input id="bd" type="date" value="${TODAY}" required></label><label class="f">Area<select id="bs">${areas.map(s => `<option>${esc(s)}</option>`).join('')}</select></label></div>
   <div class="frow"><label class="f">Customer Name<input id="bp" list="bplist" required></label><datalist id="bplist">${parties.map(p => `<option value="${esc(p)}">`).join('')}</datalist></div>
   <div class="frow"><label class="f">Voucher Type<input id="bv" list="bvlist" value="Sales"></label><datalist id="bvlist">${vts.map(p => `<option value="${esc(p)}">`).join('')}</datalist><label class="f">Invoice No<input id="bi"></label></div>
-  <div class="frow"><label class="f">Basic Amount<input id="ba" type="number" step="0.01" required></label><label class="f">Basic Value<input id="bx" type="number" step="0.01" placeholder="Same as amount if empty"></label></div>
+  <div class="frow"><label class="f">Basic Amount<input id="ba" type="number" step="0.01" required></label></div>
   <div class="err" id="berr"></div><div class="acts"><button type="button" class="btn" data-act="closeModal">Cancel</button><button class="btn pri">Add billing</button></div></form>`);
 }
 async function submitBill(){
   if (!canBill()) return;
   const party = val('bp'), amt = val('ba'), date = val('bd'), sub = val('bs');
   if (!party || amt === '' || !date || !sub){ $('#berr').textContent = 'Date, customer, area and basic amount are required.'; return; }
-  const a = round2(+amt), v = val('bx') === '' ? a : round2(+val('bx'));
-  await Store.set('billing', uid('b'), {date, party, sub, vtype:val('bv'), inv:val('bi'), amount:a, value:v, by:S.me});
-  await logAct('Billing', `${party} ${val('bi')} ${inr2(v)} (${sub})`);
+  const a = round2(+amt), v = a;
+  await Store.set('billing', uid('b'), {date, party, sub, vtype:val('bv'), inv:val('bi'), amount:a, by:S.me});
+  await logAct('Billing', `${party} ${val('bi')} ${inr2(a)} (${sub})`);
   closeModal(); forceRender = true; render();
 }
 const bkey = b => [(b.inv || '').toLowerCase(), (b.vtype || '').toLowerCase(), (b.party || '').toLowerCase(), b.inv ? '' : (b.date || '') + '|' + b.amount].join('|');
@@ -1098,13 +1098,13 @@ async function parseBilling(file){
     const hi = aoa.findIndex(r => r && r.some(c => /^(customer name|party name)$/i.test(String(c ?? '').trim())));
     if (hi < 0) continue;
     const hd = aoa[hi].map(c => String(c ?? '').trim().toLowerCase()), ix = (...ks) => hd.findIndex(h => ks.includes(h));
-    const c = {d:ix('date'), p:ix('customer name', 'party name'), s:ix('area'), v:ix('voucher type'), i:ix('invoice no', 'invoice number', 'ref no'), a:ix('basic amount', 'amount'), x:ix('basic value')};
+    const c = {d:ix('date'), p:ix('customer name', 'party name'), s:ix('area'), v:ix('voucher type'), i:ix('invoice no', 'invoice number', 'ref no'), a:ix('basic amount', 'basic value', 'amount')};
     const num = v => { if (typeof v === 'number') return v; const n = parseFloat(String(v ?? '').replace(/[₹,\s]/g, '')); return isFinite(n) ? n : null; };
     for (const r of aoa.slice(hi + 1)){
-      const party = String(r[c.p] ?? '').trim(), amt = num(r[c.a]), val2 = c.x >= 0 ? num(r[c.x]) : null;
-      if (!party || (amt == null && val2 == null)) continue;
-      const a = round2(amt ?? val2);
-      out.push({date:parseDate(r[c.d]), party, sub:String(r[c.s] ?? '').trim() || name, vtype:String(r[c.v] ?? '').trim(), inv:String(r[c.i] ?? '').trim(), amount:a, value:round2(val2 ?? a)});
+      const party = String(r[c.p] ?? '').trim(), amt = num(r[c.a]);
+      if (!party || amt == null) continue;
+      const a = round2(amt);
+      out.push({date:parseDate(r[c.d]), party, sub:String(r[c.s] ?? '').trim() || name, vtype:String(r[c.v] ?? '').trim(), inv:String(r[c.i] ?? '').trim(), amount:a});
     }
   }
   return out;
@@ -1114,7 +1114,7 @@ function billImportModal(rows){
   const known = new Set(allSubs()); let skipped = 0; const ok = [];
   rows.forEach(r => { if (!known.has(r.sub) && !isAdm()){ skipped++; return; } ok.push(r); });
   const ex = new Map([...D.billing.values()].map(b => [bkey(b), b])), add = [], upd = [];
-  ok.forEach(r => { const o = ex.get(bkey(r)); if (!o) add.push(r); else if (o.amount !== r.amount || o.value !== r.value || o.date !== r.date || o.sub !== r.sub) upd.push({o, r}); });
+  ok.forEach(r => { const o = ex.get(bkey(r)); if (!o) add.push(r); else if (o.amount !== r.amount || o.date !== r.date || o.sub !== r.sub) upd.push({o, r}); });
   billImp = {add, upd};
   openModal(`<h2>Import billing</h2><p><b>${rows.length}</b> rows read from the file.</p><p style="margin:8px 0"><b>${add.length}</b> new · <b>${upd.length}</b> updated · <b>${ok.length - add.length - upd.length}</b> unchanged${skipped ? ' · <b>' + skipped + '</b> skipped (area not found)' : ''}</p><div id="bimsg" class="mut"></div><div class="acts"><button class="btn" data-act="closeModal">Cancel</button><button class="btn pri" data-act="applyBill" ${add.length + upd.length ? '' : 'disabled'}>Apply import</button></div>`);
 }
@@ -1127,14 +1127,14 @@ async function applyBill(){
   await logAct('Billing import', `${p.add.length} new, ${p.upd.length} updated`);
   billImp = null; closeModal(); forceRender = true; render();
 }
-const BILL_HEAD = ['Date','Customer Name','Area','Voucher Type','Invoice No','Basic Amount','Basic Value'];
+const BILL_HEAD = ['Date','Customer Name','Area','Voucher Type','Invoice No','Basic Amount'];
 async function billSample(){
   const subs = allSubs(), s1 = subs[0] || 'City 1', s2 = subs[1] || s1;
   const d = n => { const x = new Date(); x.setDate(x.getDate() - n); return new Date(Date.UTC(x.getFullYear(), x.getMonth(), x.getDate())); };
-  const rows = [[d(10), 'ABC Motors Pvt Ltd', s1, 'Sales', 'INV/001/26-27', 100000, 100000], [d(6), 'Sri Lakshmi Traders', s1, 'Sales', 'INV/014/26-27', 48250.5, 48250.5], [d(3), 'Kumar Auto Components', s2, 'Credit Note', 'CN/003/26-27', 5000, 5000]];
-  const ws = XLSX.utils.aoa_to_sheet([BILL_HEAD, ...rows], {cellDates:true}); ws['!cols'] = [14, 34, 18, 16, 18, 16, 16].map(w => ({wch:w}));
+  const rows = [[d(10), 'ABC Motors Pvt Ltd', s1, 'Sales', 'INV/001/26-27', 100000], [d(6), 'Sri Lakshmi Traders', s1, 'Sales', 'INV/014/26-27', 48250.5], [d(3), 'Kumar Auto Components', s2, 'Credit Note', 'CN/003/26-27', 5000]];
+  const ws = XLSX.utils.aoa_to_sheet([BILL_HEAD, ...rows], {cellDates:true}); ws['!cols'] = [14, 34, 18, 16, 18, 16].map(w => ({wch:w}));
   rows.forEach((r, i) => { const c = ws['A' + (i + 2)]; if (c) c.z = 'dd-mm-yyyy'; });
-  const info = XLSX.utils.aoa_to_sheet([['How to use this file'], ['1. One row per bill on the Billing sheet. Keep the column headings as they are.'], ['2. Area must match an Area name in the app.'], ['3. Date: dd-mm-yyyy. Basic Amount and Basic Value: numbers only. If Basic Value is empty it is taken as the Basic Amount.'], ['4. In the app choose Billing > Import Excel. Rows with the same Invoice No, Voucher Type and Customer update the old row.']]); info['!cols'] = [{wch:100}];
+  const info = XLSX.utils.aoa_to_sheet([['How to use this file'], ['1. One row per bill on the Billing sheet. Keep the column headings as they are.'], ['2. Area must match an Area name in the app.'], ['3. Date: dd-mm-yyyy. Basic Amount: numbers only.'], ['4. In the app choose Billing > Import Excel. Rows with the same Invoice No, Voucher Type and Customer update the old row.']]); info['!cols'] = [{wch:100}];
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Billing'); XLSX.utils.book_append_sheet(wb, info, 'How to use');
   await saveBook(wb, 'Billing_Import_Sample.xlsx', $('#bmsg'));
 }
@@ -1272,7 +1272,7 @@ const ACT = {
   addBill:() => { if (canBill()) billModal(); },
   applyBill:() => applyBill(),
   billSample:() => billSample(),
-  billExport:() => { const rows = billRows().sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1); return exportSheet('Billing', 'Billing', BILL_HEAD, rows.map(b => [xd(b.date), b.party, b.sub, b.vtype || '', b.inv || '', b.amount || 0, bval(b)]), [14, 34, 18, 16, 18, 16, 16]); },
+  billExport:() => { const rows = billRows().sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1); return exportSheet('Billing', 'Billing', BILL_HEAD, rows.map(b => [xd(b.date), b.party, b.sub, b.vtype || '', b.inv || '', b.amount || 0]), [14, 34, 18, 16, 18, 16]); },
   delBill:async t => { const b = D.billing.get(t.dataset.id); if (!b || !isAdm()) return; if (!confirmDel(t, 'Delete billing row?')) return; await Store.del('billing', b.id); await logAct('Billing delete', `${b.party} ${b.inv || ''}`); },
   annOk:() => { try { document.activeElement?.blur(); document.querySelectorAll('[data-chg]').forEach(el => el.dispatchEvent(new Event('change', {bubbles:true}))); } catch(e){} const st = annState(); if (st){ try { sessionStorage.setItem('ann_ack', String(st.a.at)); } catch(e){} } annTick(); },
   annStart:async () => { if (!isAdm()) return; await Store.set('meta', 'announce', {active:true, at:Date.now(), by:S.me}); annTick(); },
