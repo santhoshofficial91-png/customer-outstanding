@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<meta name="app-build" content="20261116112814">
+<meta name="app-build" content="20261117055812">
 <style>
 /* Direction: midnight-indigo ledger. Hero total in a violet-to-rose gradient, every metric its own hue, areas as colour-coded tiles. */
 :root{
@@ -525,7 +525,7 @@ const COLS = {
   exp:{h:'Expected Date', s:e=>e.expectedDate||'9999', c:e => {
     if (S.editRow === e.id && isTop() && e.expectedDate) return `<input class="ie" type="date" data-ie="expectedDate" value="${e.expectedDate}" aria-label="Expected Date (admin change)">`;
     const lk = expLock(e);
-    if (F.sub !== 'All' && !isTop() && e.status !== 'Paid' && lk.open) return `<input class="dt" type="date" min="${TODAY}" value="${e.expectedDate || ''}" data-chg="expdate" data-id="${e.id}" aria-label="Expected payment date for ${esc(e.party)}">${e.expectedDate && lk.left ? `<div class="mut" style="font-size:11px">editable for ${lk.left}</div>` : ''}`;
+    if (F.sub !== 'All' && canExp() && e.status !== 'Paid' && (lk.open || isTop())) return `<input class="dt" type="date" min="${TODAY}" value="${e.expectedDate || ''}" data-chg="expdate" data-id="${e.id}" aria-label="Expected payment date for ${esc(e.party)}">${e.expectedDate && lk.left ? `<div class="mut" style="font-size:11px">editable for ${lk.left}</div>` : ''}`;
     return e.expectedDate ? `<span class="${missed(e) ? 'mm' : ''}">${fmtD(e.expectedDate)}</span>` : '<span class="mut">—</span>'; }},
   rem:{h:'Remark', s:e=>(e.remark||'').toLowerCase(), c:e => e.status === 'Paid' ? (e.remark ? esc(e.remark) : '<span class="mut">—</span>') : `<input class="rmk" maxlength="200" value="${esc(e.remark || '')}" placeholder="Add remark" data-chg="remark" data-id="${e.id}" aria-label="Remark for ${esc(e.party)}">`},
   fu:{h:'', s:()=>'', c:e => `<button class="btn fub" data-act="open" data-id="${e.id}" aria-label="Follow-up for ${esc(e.party)}">Follow-up</button>`},
@@ -1057,8 +1057,9 @@ const FULLMON = ['January','February','March','April','May','June','July','Augus
 const mr = n => '₹' + Math.round(n || 0).toLocaleString('en-IN');
 const inr2 = n => '₹' + (n || 0).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
 const canBill = () => isAdm();
-const billAreas = () => role() === 'Executive' ? [...(me()?.subs || [])] : allSubs();
-const billRows = () => { if (role() !== 'Executive') return [...D.billing.values()]; const ok = new Set(billAreas()); return [...D.billing.values()].filter(b => ok.has(b.sub)); };
+const canExp = () => !isTop() || canInv();
+const billAreas = () => role() === 'Executive' ? [...(me()?.subs || [])] : role() === 'Manager' ? [...mgrSubs(me())].sort((a, b) => a.localeCompare(b, undefined, {numeric:true})) : allSubs();
+const billRows = () => { if (isTop()) return [...D.billing.values()]; const ok = new Set(billAreas()); return [...D.billing.values()].filter(b => ok.has(b.sub)); };
 const bval = b => b.amount || 0;
 const fyStart = (() => { const [y, m] = TODAY.split('-').map(Number); return m >= 4 ? y : y - 1; })();
 const FYL = String(fyStart).slice(2) + '-' + String(fyStart + 1).slice(2);
@@ -1380,7 +1381,7 @@ document.addEventListener('change', async ev => {
   else if (t.dataset.fc){ F[t.dataset.fc] = t.checked; F.page = 1; render(); }
   else if (t.dataset.chg === 'status'){ const e = D.entries.get(t.dataset.id); if (e && canStat() && sKey(e.status) !== t.value){ const o = {...e, status:t.value}; if (t.value === 'Paid') o.paidOn = TODAY; await Store.set('entries', e.id, o); await logEdit('Edit', e, [{f:'Status', from:sKey(e.status) === 'Open' ? 'Pending' : sKey(e.status), to:t.value === 'Open' ? 'Pending' : t.value}]); } }
   else if (t.dataset.chg === 'remark'){ const e = D.entries.get(t.dataset.id); const v = t.value.trim().slice(0, 200); if (e && (e.remark || '') !== v){ await Store.set('entries', e.id, {...e, remark:v}); await logEdit('Edit', e, [{f:'Remark', from:e.remark || '—', to:v || '—'}]); } }
-  else if (t.dataset.chg === 'expdate'){ const e = D.entries.get(t.dataset.id); if (e && !isTop() && expLock(e).open && (e.expectedDate || '') !== t.value && (!t.value || t.value >= TODAY)){ const o = {...e, expectedDate:t.value}; if (!t.value){ o.expSetAt = ''; o.expSetBy = ''; } else if (!e.expSetAt || !e.expectedDate){ o.expSetAt = nowISO(); o.expSetBy = S.me; } await Store.set('entries', e.id, o); await logEdit('Edit', e, [{f:'Expected Payment Date', from:showV('expectedDate', e.expectedDate), to:showV('expectedDate', t.value)}]); } else { forceRender = true; render(); } }
+  else if (t.dataset.chg === 'expdate'){ const e = D.entries.get(t.dataset.id); if (e && canExp() && (expLock(e).open || isTop()) && (e.expectedDate || '') !== t.value && (!t.value || t.value >= TODAY)){ const o = {...e, expectedDate:t.value}; if (!t.value){ o.expSetAt = ''; o.expSetBy = ''; } else if (!e.expSetAt || !e.expectedDate){ o.expSetAt = nowISO(); o.expSetBy = S.me; } await Store.set('entries', e.id, o); await logEdit('Edit', e, [{f:'Expected Payment Date', from:showV('expectedDate', e.expectedDate), to:showV('expectedDate', t.value)}]); } else { forceRender = true; render(); } }
   else if (t.dataset.chg === 'assign'){ const e = D.entries.get(t.dataset.id); await Store.set('entries', e.id, {...e, assignedTo:t.value}); await logEdit('Edit', e, [{f:'Assigned To', from:uname(e.assignedTo) || '—', to:uname(t.value) || '—'}]); await logAct('Assign', `${e.party} ${e.ref || ''} → ${uname(t.value) || 'Unassigned'}`); }
   else if (t.id === 'chimg' && t.files[0]){ try { S.chatImg = await compressImg(t.files[0]); } catch(e){ S.chatImg = null; } t.value = ''; chatPrev(); }
   else if (t.id === 'bfile' && t.files[0]){ const bm = $('#bmsg'); if (bm) bm.textContent = 'Reading…'; try { const rows = await parseBilling(t.files[0]); t.value = ''; if (bm) bm.textContent = ''; if (!rows.length){ if (bm) bm.textContent = 'No billing rows found. Use the sample format.'; return; } billImportModal(rows); } catch(e){ if (bm) bm.textContent = 'Could not read this file.'; } }
