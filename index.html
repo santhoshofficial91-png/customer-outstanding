@@ -370,6 +370,7 @@ async function hashPw(pw, salt){
 /* ---------- storage (shared db when available, local fallback) ---------- */
 const COLS_DB = ['users','entries','followups','payments','activity','edits','meta','chats','billing'];
 const D = {}; COLS_DB.forEach(c => D[c] = new Map());
+const hasOut = u => !u || !Array.isArray(u.mods) || u.mods.includes('out'); // Payment Request-only people are not Customer Outstanding users
 const loaded = {}; let loadFailed = false;
 function norm(snap){
   let docs = snap && snap.docs ? snap.docs : (Array.isArray(snap) ? snap : null);
@@ -383,7 +384,7 @@ const Store = {
     const loadAll = async () => {
       let rows = [], a = 0;
       for (;;){ const {data, error} = await sb.from('docs').select('col,id,data').order('col').order('id').range(a, a + 999); if (error) throw error; rows = rows.concat(data); if (data.length < 1000) break; a += 1000; }
-      COLS_DB.forEach(c => { D[c] = new Map(rows.filter(r => r.col === c).map(r => [r.id, {...r.data, id:r.id}])); loaded[c] = true; });
+      COLS_DB.forEach(c => { D[c] = new Map(rows.filter(r => r.col === c && (c !== 'users' || hasOut(r.data))).map(r => [r.id, {...r.data, id:r.id}])); loaded[c] = true; });
       if (D.users.get(S.me)?.role === 'Admin') await this.loadSecrets();
       schedule();
     };
@@ -394,7 +395,7 @@ const Store = {
     let first = true;
     this.ch = sb.channel('docs-live').on('postgres_changes', {event:'*', schema:'public', table:'docs'}, p => {
       if (p.eventType === 'DELETE'){ const o = p.old || {}; if (o.col && D[o.col]){ D[o.col].delete(o.id); schedule(); } }
-      else { const n = p.new; if (n && D[n.col]){ D[n.col].set(n.id, {...n.data, id:n.id}); schedule(); } }
+      else { const n = p.new; if (n && D[n.col] && (n.col !== 'users' || hasOut(n.data))){ D[n.col].set(n.id, {...n.data, id:n.id}); schedule(); } }
     }).subscribe(st => { if (st === 'SUBSCRIBED'){ if (first) first = false; else loadAll().catch(() => {}); } });
   },
   async loadSecrets(){ const {data} = await this.sb.from('user_secrets').select('user_id,pw'); Object.keys(SECRETS).forEach(k => delete SECRETS[k]); (data || []).forEach(r => SECRETS[r.user_id] = r.pw); },
